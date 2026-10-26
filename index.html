@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Block Puzzle</title>
+<style>
+  :root {
+    --bg: #12141c; --panel: #1b1f2b; --cell: #262b3a; --text: #e8ebf5; --muted: #8b93ab;
+    --accent: #ffb703; --bad: #ff5d73; --size: min(11vw, 52px);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; touch-action: none; user-select: none; }
+  #app { max-width: 480px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  header { width: 100%; display: flex; justify-content: space-between; align-items: end; }
+  .stat small { display: block; color: var(--muted); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+  .stat b { font-size: 32px; font-variant-numeric: tabular-nums; }
+  .stat.right { text-align: right; }
+  .stat.combo { text-align: center; color: var(--accent); }
+  .stat.combo small { color: var(--accent); }
+  .stat.combo.pop b { animation: pop .35s ease-out; }
+  @keyframes pop { 0% { transform: scale(1.6); } 100% { transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .stat.combo.pop b { animation: none; } }
+  #board { display: grid; grid-template-columns: repeat(8, var(--size)); grid-template-rows: repeat(8, var(--size));
+    background: var(--panel); padding: 6px; border-radius: 14px; position: relative; }
+  .cell { padding: 2px; }
+  .cell i { display: block; width: 100%; height: 100%; border-radius: 6px; background: var(--cell); transition: background .12s; }
+  .cell.on i { background: var(--c); }
+  .cell.ghost i { background: var(--c); opacity: .45; }
+  .cell.clearing i { background: #fff; }
+  #tray { width: 100%; display: flex; justify-content: space-around; align-items: center; height: calc(var(--size) * 3 + 16px);
+    background: var(--panel); border-radius: 14px; }
+  .slot { width: 30%; display: flex; justify-content: center; align-items: center; height: 100%; cursor: grab; }
+  #next { width: 100%; display: flex; justify-content: space-around; align-items: center; height: calc(var(--size) * 1.6);
+    background: var(--panel); border-radius: 14px; position: relative; opacity: .85; }
+  #next[hidden] { display: none; }
+  #next small { position: absolute; top: 6px; left: 12px; color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .nslot { width: 30%; display: flex; justify-content: center; align-items: center; height: 100%; padding-top: 10px; }
+  .nslot .q { color: var(--muted); font-size: 22px; font-weight: 700; }
+  .piece.mini .pc { width: calc(var(--size) * .3); height: calc(var(--size) * .3); padding: 1px; }
+  #diff { display: flex; gap: 8px; width: 100%; }
+  #over button { margin-inline: 4px; }
+  #diff button { flex: 1; margin: 0; padding: 10px 0; font-size: 14px; background: var(--panel); color: var(--muted); }
+  #diff button.on { background: var(--accent); color: #1b1300; }
+  .slot.sel { outline: 2px solid var(--accent); outline-offset: -6px; border-radius: 12px; }
+  .piece { display: grid; gap: 0; }
+  .piece .pc { width: calc(var(--size) * .55); height: calc(var(--size) * .55); padding: 1.5px; }
+  .piece .pc i { display: block; width: 100%; height: 100%; border-radius: 4px; background: var(--c); }
+  .piece .pc.e i { background: transparent; }
+  #ghost { position: fixed; z-index: 10; pointer-events: none; display: none; }
+  #ghost .pc { width: var(--size); height: var(--size); padding: 2px; }
+  #over, #ad, #lbo { position: fixed; inset: 0; background: #0009; display: none; align-items: center; justify-content: center; z-index: 20; padding: 16px; }
+  #over.show, #ad.show, #lbo.show { display: flex; }
+  #ad { z-index: 30; }
+  .card { background: var(--panel); border-radius: 16px; padding: 28px 32px; text-align: center; width: min(100%, 380px); max-height: 100%; overflow-y: auto; }
+  .card h2 { margin: 0 0 4px; } .card p { color: var(--muted); margin: 4px 0; }
+  .card .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .card .row button { margin-top: 12px; }
+  button.ghostbtn { background: var(--cell); color: var(--text); }
+  #lbtop { margin: 0; padding: 10px 0; width: 100%; font-size: 14px; background: var(--cell); color: var(--text); }
+  #lbtop[hidden] { display: none; }
+  #adtime { font-size: 40px; font-weight: 800; color: var(--accent); }
+  #lbl { list-style: none; margin: 12px 0; padding: 0; text-align: left; }
+  #lbl li { display: flex; gap: 10px; padding: 8px 10px; border-radius: 8px; font-variant-numeric: tabular-nums; }
+  #lbl li:nth-child(odd) { background: var(--cell); }
+  #lbl li.me { outline: 2px solid var(--accent); }
+  #lbl .rk { width: 22px; color: var(--muted); }
+  #lbl .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #lbl .sc { font-weight: 700; }
+  #lbl .none { display: block; text-align: center; color: var(--muted); background: none; }
+  input { user-select: text; -webkit-user-select: text; width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--cell);
+    background: var(--bg); color: var(--text); font-size: 16px; }
+  input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button { margin-top: 16px; background: var(--accent); color: #1b1300; border: 0; border-radius: 10px; padding: 12px 24px; font-size: 16px; font-weight: 700; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="stat"><small>Score</small><b id="score">0</b></div>
+    <div id="combo" class="stat combo" style="visibility:hidden"><small>Combo</small><b id="combon">×0</b></div>
+    <div class="stat right"><small>Best</small><b id="best">0</b></div>
+  </header>
+  <div id="board"></div>
+  <div id="tray"></div>
+  <div id="next"></div>
+  <div id="diff"></div>
+  <button id="lbtop" hidden>Daily leaderboard</button>
+</div>
+<div id="ghost"></div>
+<div id="over"><div class="card">
+  <h2 id="otitle">Game over</h2><p id="final"></p><p id="newbest"></p><p id="dailynote" hidden></p>
+  <div class="row">
+    <button id="again">Play again</button>
+    <button id="adbtn" hidden>Watch ad to play again</button>
+    <button id="lbbtn" class="ghostbtn" hidden>Leaderboard</button>
+    <button id="share" class="ghostbtn" hidden>Copy result</button>
+    <button id="closebtn" class="ghostbtn">Close</button>
+  </div>
+</div></div>
+<div id="ad"><div class="card">
+  <h2>Ad break</h2>
+  <p>Placeholder for a rewarded ad. Your next go starts in</p>
+  <div id="adtime">5</div>
+  <button id="adcancel" class="ghostbtn">Cancel</button>
+</div></div>
+<div id="lbo"><div class="card">
+  <h2>Daily leaderboard</h2><p id="lbday"></p>
+  <ol id="lbl"></ol>
+  <div id="lbsubmit" hidden>
+    <input id="nick" maxlength="16" placeholder="Your name" autocomplete="off">
+    <button id="submitscore">Submit today’s score</button>
+  </div>
+  <p id="lbstatus"></p>
+  <button id="lbclose" class="ghostbtn">Close</button>
+</div></div>
+
+<script>
+const N = 8;
+const COLORS = ['#ef476f', '#ffb703', '#06d6a0', '#4cc9f0', '#9b5de5', '#f77f00'];
+const SHAPES = [
+  [[1]], [[1,1]], [[1,1,1]], [[1,1,1,1]], [[1,1,1,1,1]],
+  [[1],[1]], [[1],[1],[1]], [[1],[1],[1],[1]], [[1],[1],[1],[1],[1]],
+  [[1,1],[1,1]], [[1,1,1],[1,1,1],[1,1,1]],
+  [[1,0],[1,1]], [[0,1],[1,1]], [[1,1],[1,0]], [[1,1],[0,1]],
+  [[1,0,0],[1,0,0],[1,1,1]], [[0,0,1],[0,0,1],[1,1,1]], [[1,1,1],[1,0,0],[1,0,0]], [[1,1,1],[0,0,1],[0,0,1]],
+  [[1,1,1],[0,1,0]], [[0,1,0],[1,1,1]], [[1,0],[1,1],[1,0]], [[0,1],[1,1],[0,1]],
+  [[1,1,0],[0,1,1]], [[0,1,1],[1,1,0]],
+];
+
+// preview = how many of the next hand's pieces are shown
+// safe = hand is guaranteed to contain a playable piece: 'any' may swap any piece,
+//        'hidden' never swaps the piece the player was shown in the preview
+// mult = score multiplier (all levels score on equal terms)
+const DIFF = {
+  easy:   { label: 'Easy',   preview: 3, safe: false,    mult: 1 },
+  medium: { label: 'Medium', preview: 1, safe: 'hidden', mult: 1 },
+  hard:   { label: 'Hard',   preview: 0, safe: 'any',    mult: 1 },
+  // daily: no preview and no safety net, so every player gets exactly the same pieces all game
+  daily:  { label: 'Daily',  preview: 0, safe: false,    mult: 1 },
+};
+
+// ---- daily mode: pieces come from a generator seeded with today's date (UTC) ----
+const today = () => new Date().toISOString().slice(0, 10);
+let rs = 0;   // generator state, saved with the game so a daily can be resumed
+function seedFor(date) { let h = 2166136261; for (const ch of 'bp-' + date) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h | 0; }
+function rand() {
+  if (diff !== 'daily') return Math.random();
+  rs = (rs + 0x6D2B79F5) | 0;   // mulberry32
+  let t = Math.imul(rs ^ (rs >>> 15), 1 | rs);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+const dailyKey = () => 'bp-daily-' + today();
+function dailyResult() { try { const v = localStorage.getItem(dailyKey()); return v === null ? null : +v; } catch (e) { return null; } }
+let grid, pieces, nextPieces, score, best, combo = 0, diff = 'medium';
+let locked = false;   // true once a game is over (or today's daily is used up): nothing can be placed
+try { const d = localStorage.getItem('bp-diff'); if (DIFF[d]) diff = d; } catch (e) {}
+// one-time reset: Medium and Hard bests were earned with the old x1.5 / x2 multipliers
+try {
+  if (localStorage.getItem('bp-scoring') !== '2') {
+    localStorage.removeItem('bp-best-medium');
+    localStorage.removeItem('bp-best-hard');
+    localStorage.setItem('bp-scoring', '2');
+  }
+} catch (e) {}
+function loadBest() { try { best = +localStorage.getItem('bp-best-' + diff) || 0; } catch (e) { best = 0; } }
+
+const $ = id => document.getElementById(id);
+const boardEl = $('board'), trayEl = $('tray'), ghostEl = $('ghost');
+
+function newPiece() {
+  return { shape: SHAPES[Math.floor(rand() * SHAPES.length)], color: COLORS[Math.floor(rand() * COLORS.length)] };
+}
+const newHand = () => [newPiece(), newPiece(), newPiece()];
+// The next hand is generated one hand ahead so it can be previewed.
+function dealPieces() {
+  pieces = nextPieces || newHand();
+  nextPieces = newHand();
+  // medium and hard: guarantee at least one piece in the hand can be placed
+  const safe = DIFF[diff].safe;
+  if (safe && !pieces.some(p => canPlaceAnywhere(p.shape))) {
+    const ok = SHAPES.filter(canPlaceAnywhere);
+    const slots = safe === 'hidden' ? [1, 2] : [0, 1, 2];   // slot 0 is the one medium previewed
+    if (ok.length) pieces[slots[Math.floor(Math.random() * slots.length)]].shape = ok[Math.floor(Math.random() * ok.length)];
+  }
+}
+
+function fits(shape, r, c) {
+  for (let i = 0; i < shape.length; i++) for (let j = 0; j < shape[i].length; j++) {
+    if (!shape[i][j]) continue;
+    const y = r + i, x = c + j;
+    if (y < 0 || y >= N || x < 0 || x >= N || grid[y][x]) return false;
+  }
+  return true;
+}
+function canPlaceAnywhere(shape) {
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (fits(shape, r, c)) return true;
+  return false;
+}
+
+function pieceHTML(p, cls) {
+  const cols = p.shape[0].length;
+  const el = document.createElement('div');
+  el.className = cls;
+  el.style.gridTemplateColumns = `repeat(${cols}, auto)`;
+  el.style.setProperty('--c', p.color);
+  for (const row of p.shape) for (const v of row) {
+    const d = document.createElement('div');
+    d.className = 'pc' + (v ? '' : ' e');
+    d.innerHTML = '<i></i>';
+    el.appendChild(d);
+  }
+  return el;
+}
+
+function renderBoard(ghost) {
+  boardEl.innerHTML = '';
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const d = document.createElement('div');
+    d.className = 'cell';
+    d.innerHTML = '<i></i>';
+    if (grid[r][c]) { d.classList.add('on'); d.style.setProperty('--c', grid[r][c]); }
+    else if (ghost && ghost.cells.has(r * N + c)) { d.classList.add('ghost'); d.style.setProperty('--c', ghost.color); }
+    boardEl.appendChild(d);
+  }
+}
+
+function renderTray() {
+  trayEl.innerHTML = '';
+  pieces.forEach((p, idx) => {
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    if (p) {
+      slot.appendChild(pieceHTML(p, 'piece'));
+      slot.addEventListener('pointerdown', e => startDrag(e, idx));
+    }
+    trayEl.appendChild(slot);
+  });
+}
+
+// ---- drag & drop ----
+let drag = null;   // piece being dragged (finger or held mouse)
+let sel = null;    // piece picked up by clicking (mouse)
+
+// Moves the ghost to the pointer and updates the drop target on `st`.
+// lift > 0 floats the piece above the pointer so a finger doesn't hide it.
+function track(st, e, lift) {
+  const rect = boardEl.getBoundingClientRect();
+  const pitch = (rect.width - 12) / N;
+  const w = st.p.shape[0].length * pitch, h = st.p.shape.length * pitch;
+  const gx = e.clientX - w / 2, gy = lift ? e.clientY - h - lift : e.clientY - h / 2;
+  ghostEl.style.left = gx + 'px'; ghostEl.style.top = gy + 'px';
+  const c = Math.round((gx - rect.left - 6) / pitch), r = Math.round((gy - rect.top - 6) / pitch);
+  if (fits(st.p.shape, r, c)) {
+    st.target = { r, c };
+    const cells = new Set();
+    st.p.shape.forEach((row, i) => row.forEach((v, j) => v && cells.add((r + i) * N + c + j)));
+    renderBoard({ cells, color: st.p.color });
+  } else {
+    st.target = null;
+    renderBoard();
+  }
+}
+function showGhost(p) {
+  ghostEl.innerHTML = '';
+  ghostEl.appendChild(pieceHTML(p, 'piece'));
+  ghostEl.style.display = 'block';
+}
+
+function startDrag(e, idx) {
+  e.preventDefault();
+  if (locked) return;
+  const wasSelected = sel && sel.idx === idx;
+  clearSel();
+  drag = { idx, p: pieces[idx], target: null, x: e.clientX, y: e.clientY, moved: false, wasSelected };
+  showGhost(drag.p);
+  moveDrag(e);
+  window.addEventListener('pointermove', moveDrag);
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', cancelDrag);
+}
+function moveDrag(e) {
+  if (!drag) return;
+  if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 6) drag.moved = true;
+  track(drag, e, 40);
+}
+function stopListeners() {
+  window.removeEventListener('pointermove', moveDrag);
+  window.removeEventListener('pointerup', endDrag);
+  window.removeEventListener('pointercancel', cancelDrag);
+  ghostEl.style.display = 'none';
+}
+function cancelDrag() { stopListeners(); drag = null; renderBoard(); }
+function endDrag(e) {
+  const d = drag; stopListeners(); drag = null;
+  if (!d) return;
+  if (!d.moved && e.pointerType === 'mouse') {
+    // plain click on a piece: pick it up (click it again to put it back)
+    renderBoard();
+    if (!d.wasSelected) selectPiece(d.idx, e);
+  } else if (d.target) place(d.idx, d.target.r, d.target.c);
+  else renderBoard();
+}
+
+// ---- click to pick up, click to place (mouse) ----
+function selectPiece(idx, e) {
+  sel = { idx, p: pieces[idx], target: null };
+  showGhost(sel.p);
+  trayEl.children[idx].classList.add('sel');
+  track(sel, e, 0);
+  window.addEventListener('pointermove', selMove);
+  window.addEventListener('pointerdown', selDown);
+  window.addEventListener('keydown', selKey);
+  window.addEventListener('contextmenu', selCancel);
+}
+function clearSel() {
+  if (!sel) return;
+  sel = null;
+  ghostEl.style.display = 'none';
+  trayEl.querySelectorAll('.sel').forEach(s => s.classList.remove('sel'));
+  window.removeEventListener('pointermove', selMove);
+  window.removeEventListener('pointerdown', selDown);
+  window.removeEventListener('keydown', selKey);
+  window.removeEventListener('contextmenu', selCancel);
+  renderBoard();
+}
+function selMove(e) { if (sel) track(sel, e, 0); }
+function selDown(e) {
+  if (!sel || e.button !== 0) return;
+  // check before track(): it rebuilds the board cells, detaching e.target
+  const onBoard = boardEl.contains(e.target);
+  track(sel, e, 0);
+  if (onBoard && sel.target) {
+    const { idx, target } = sel;
+    clearSel();
+    place(idx, target.r, target.c);
+  } else if (!onBoard) clearSel();   // clicked away from the board
+}
+function selKey(e) { if (e.key === 'Escape') clearSel(); }
+function selCancel(e) { e.preventDefault(); clearSel(); }
+
+// ---- game rules ----
+function place(idx, r, c) {
+  const p = pieces[idx];
+  let placed = 0;
+  p.shape.forEach((row, i) => row.forEach((v, j) => { if (v) { grid[r + i][c + j] = p.color; placed++; } }));
+  pieces[idx] = null;
+
+  const rows = [], cols = [];
+  for (let i = 0; i < N; i++) {
+    if (grid[i].every(Boolean)) rows.push(i);
+    if (grid.every(row => row[i])) cols.push(i);
+  }
+  const lines = rows.length + cols.length;
+  rows.forEach(i => { for (let x = 0; x < N; x++) grid[i][x] = null; });
+  cols.forEach(j => { for (let y = 0; y < N; y++) grid[y][j] = null; });
+
+  // combo: consecutive placements that each clear a line; from the 2nd on it adds 10 x (combo - 1)
+  combo = lines ? combo + 1 : 0;
+  const comboBonus = combo >= 2 ? 10 * (combo - 1) : 0;
+  score += Math.round((placed + (lines ? 10 * lines * lines : 0) + comboBonus) * DIFF[diff].mult);
+  if (pieces.every(x => !x)) dealPieces();
+  render();
+  if (!pieces.some(x => x && canPlaceAnywhere(x.shape))) gameOver();
+  else saveGame();
+}
+
+// ---- each difficulty keeps its own game in progress ----
+const saveKey = () => 'bp-save-' + diff;
+function saveGame() {
+  try { localStorage.setItem(saveKey(), JSON.stringify({ grid, pieces, nextPieces, score, combo, rs, date: today() })); } catch (e) {}
+}
+function clearSave() { try { localStorage.removeItem(saveKey()); } catch (e) {} }
+function loadGame() {
+  try {
+    const s = JSON.parse(localStorage.getItem(saveKey()));
+    if (!s || s.grid.length !== N || s.pieces.length !== 3 || s.nextPieces.length !== 3) return false;
+    if (diff === 'daily' && s.date !== today()) return false;   // yesterday's daily is over
+    ({ grid, pieces, nextPieces, score, combo } = s);
+    rs = s.rs | 0;
+    return true;
+  } catch (e) { return false; }
+}
+
+function render() {
+  $('score').textContent = score;
+  $('best').textContent = Math.max(best, score);
+  const cb = $('combo');
+  const had = cb.dataset.n;
+  cb.dataset.n = combo;
+  cb.style.visibility = combo >= 2 ? 'visible' : 'hidden';
+  $('combon').textContent = '×' + combo;
+  if (combo >= 2 && had !== String(combo)) { cb.classList.remove('pop'); void cb.offsetWidth; cb.classList.add('pop'); }
+  renderBoard(); renderTray(); renderNext(); renderDiff();
+  $('lbtop').hidden = diff !== 'daily';
+}
+
+function renderNext() {
+  const el = $('next');
+  const shown = DIFF[diff].preview;
+  el.hidden = shown === 0;
+  el.innerHTML = '<small>Next</small>';
+  nextPieces.forEach((p, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'nslot';
+    if (i < shown) slot.appendChild(pieceHTML(p, 'piece mini'));
+    else slot.innerHTML = '<span class="q">?</span>';
+    el.appendChild(slot);
+  });
+}
+
+function renderDiff() {
+  const el = $('diff');
+  el.innerHTML = '';
+  for (const k in DIFF) {
+    const b = document.createElement('button');
+    b.textContent = DIFF[k].label;
+    b.className = k === diff ? 'on' : '';
+    b.addEventListener('click', () => setDiff(k));
+    el.appendChild(b);
+  }
+}
+function setDiff(k) {
+  if (k === diff) return;
+  clearSel();
+  diff = k;
+  try { localStorage.setItem('bp-diff', k); } catch (e) {}
+  start();
+}
+
+function gameOver() {
+  const isBest = score > best;
+  if (isBest) { best = score; try { localStorage.setItem('bp-best-' + diff, best); } catch (e) {} }
+  locked = true;
+  clearSave();
+  const newbest = isBest ? 'New best!' : 'Best ' + best;
+  if (diff === 'daily') {
+    // everyone gets one go; the best of any extra goes (bought with an ad) is the day's score
+    const prev = dailyResult();
+    const top = prev === null ? score : Math.max(prev, score);
+    try { localStorage.setItem(dailyKey(), top); } catch (e) {}
+    shareText = 'Block Puzzle Daily ' + today() + ': ' + top;
+    showCard('Daily complete', 'Score ' + score, newbest,
+      'Today’s score: ' + top + '. Submit it to the leaderboard, or watch an ad for another go.', true);
+  } else showCard('Game over', 'Score ' + score, newbest, '', false);
+  render();
+}
+
+function showCard(title, final, newbest, note, isDaily) {
+  $('otitle').textContent = title;
+  $('final').textContent = final;
+  $('newbest').textContent = newbest;
+  $('dailynote').textContent = note;
+  $('dailynote').hidden = !note;
+  $('again').hidden = isDaily;
+  $('adbtn').hidden = !isDaily;
+  $('lbbtn').hidden = !isDaily;
+  $('share').hidden = !isDaily;
+  $('share').textContent = 'Copy result';
+  $('over').classList.add('show');
+}
+
+// opened from the Daily button once today's go has been used
+function showDailyDone() {
+  locked = true;
+  const r = dailyResult();
+  shareText = 'Block Puzzle Daily ' + today() + ': ' + r;
+  showCard('Daily played', 'Today’s score: ' + r, '',
+    'Come back tomorrow for new pieces, or watch an ad for another go. Your best score of the day counts.', true);
+}
+
+// ---- rewarded ad (placeholder until AdMob is wired in) ----
+let adTimer = null;
+function startAd() {
+  $('over').classList.remove('show');
+  $('ad').classList.add('show');
+  let n = 5;
+  $('adtime').textContent = n;
+  clearInterval(adTimer);
+  adTimer = setInterval(() => {
+    n--;
+    $('adtime').textContent = n;
+    if (n <= 0) { clearInterval(adTimer); $('ad').classList.remove('show'); reset(); }
+  }, 1000);
+}
+function cancelAd() {
+  clearInterval(adTimer);
+  $('ad').classList.remove('show');
+  $('over').classList.add('show');
+}
+
+function reset(save = true) {
+  locked = false;
+  grid = Array.from({ length: N }, () => Array(N).fill(null));
+  score = 0;
+  combo = 0;
+  rs = seedFor(today());   // only used by the daily
+  loadBest();
+  nextPieces = null;
+  dealPieces();
+  $('over').classList.remove('show');
+  render();
+  if (save) saveGame();
+}
+// open the game saved for the current difficulty, or start a new one
+function start() {
+  if (loadGame()) { locked = false; loadBest(); $('over').classList.remove('show'); render(); }
+  else if (diff === 'daily' && dailyResult() !== null) { reset(false); showDailyDone(); }   // today's go is used
+  else reset();
+}
+$('again').addEventListener('click', () => reset());
+$('adbtn').addEventListener('click', startAd);
+$('adcancel').addEventListener('click', cancelAd);
+$('closebtn').addEventListener('click', () => $('over').classList.remove('show'));
+
+// ---- daily leaderboard: the artifact's shared database ----
+// board/<player id> holds { day, score, name }; everyone reads, each player writes only their own doc
+let dbh = null, myId = null, lbRows = [], lbFailed = false;
+async function initLeaderboard() {
+  if (!window.claude || !window.claude.use) return;
+  try {
+    dbh = await claude.use('db');
+    const user = await claude.use('user');
+    myId = user ? await user.id() : null;
+  } catch (e) { dbh = null; }
+  if (!dbh) { renderLb(); return; }
+  dbh.collection('board').where('day', '==', today()).orderBy('score', 'desc').limit(10).onSnapshot(
+    snap => { lbRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); lbFailed = false; renderLb(); },
+    () => { lbFailed = true; renderLb(); });
+}
+function renderLb() {
+  const ol = $('lbl');
+  ol.innerHTML = '';
+  $('lbday').textContent = today() + ' (UTC)';
+  const none = text => { const li = document.createElement('li'); li.className = 'none'; li.textContent = text; ol.appendChild(li); };
+  if (!dbh || lbFailed) return none('The leaderboard is not available here.');
+  if (!lbRows.length) return none('No scores yet today. Be the first.');
+  lbRows.forEach((r, i) => {
+    const li = document.createElement('li');
+    if (r.id === myId) li.className = 'me';
+    for (const [cls, text] of [['rk', i + 1], ['nm', r.name || 'Player'], ['sc', r.score]]) {
+      const s = document.createElement('span');
+      s.className = cls; s.textContent = text; li.appendChild(s);
+    }
+    ol.appendChild(li);
+  });
+}
+function openLb() {
+  renderLb();
+  const mine = dailyResult();
+  $('lbsubmit').hidden = !(dbh && myId && mine !== null);
+  $('lbstatus').textContent = !dbh ? '' : !myId ? 'Sign in to claude.ai to submit a score.'
+    : mine === null ? 'Finish a daily game to submit your score.' : '';
+  try { $('nick').value = localStorage.getItem('bp-nick') || ''; } catch (e) {}
+  $('lbo').classList.add('show');
+}
+async function submitScore() {
+  const mine = dailyResult();
+  if (!dbh || !myId || mine === null) return;
+  const name = $('nick').value.trim().slice(0, 16) || 'Player';
+  try { localStorage.setItem('bp-nick', name); } catch (e) {}
+  const btn = $('submitscore'), ref = dbh.doc('board/' + myId);
+  btn.disabled = true;
+  try {
+    const cur = await ref.get();
+    const d = cur.exists ? cur.data() : null;
+    const score = d && d.day === today() ? Math.max(d.score, mine) : mine;   // keep the day's best
+    await ref.set({ day: today(), score, name });
+    $('lbstatus').textContent = 'Submitted: ' + score;
+  } catch (e) {
+    $('lbstatus').textContent = 'Could not submit (' + (e.code || 'error') + '). Ask the owner for Contributor access.';
+  }
+  btn.disabled = false;
+}
+$('lbbtn').addEventListener('click', openLb);
+$('lbtop').addEventListener('click', openLb);
+$('lbclose').addEventListener('click', () => $('lbo').classList.remove('show'));
+$('submitscore').addEventListener('click', submitScore);
+let shareText = '';
+$('share').addEventListener('click', async () => {
+  const b = $('share');
+  try { await navigator.clipboard.writeText(shareText); b.textContent = 'Copied'; }
+  catch (e) { $('dailynote').textContent = shareText; b.textContent = 'Select the text above'; }
+});
+start();
+initLeaderboard();
+</script>
+</body>
+</html>
