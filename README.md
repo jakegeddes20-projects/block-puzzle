@@ -1,4 +1,4 @@
-# Block Puzzle
+# Block Puzzle 2
 
 8x8 drag-and-drop block puzzle. Single-file web game (`index.html`), no build step.
 
