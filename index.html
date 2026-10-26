@@ -50,9 +50,11 @@
   .piece .pc.e i { background: transparent; }
   #ghost { position: fixed; z-index: 10; pointer-events: none; display: none; }
   #ghost .pc { width: var(--size); height: var(--size); padding: 2px; }
-  #over, #ad, #lbo { position: fixed; inset: 0; background: #0009; display: none; align-items: center; justify-content: center; z-index: 20; padding: 16px; }
-  #over.show, #ad.show, #lbo.show { display: flex; }
+  #over, #ad, #lbo, #nameo { position: fixed; inset: 0; background: #0009; display: none; align-items: center; justify-content: center; z-index: 20; padding: 16px; }
+  #over.show, #ad.show, #lbo.show, #nameo.show { display: flex; }
   #ad { z-index: 30; }
+  #nameo { z-index: 40; }
+  #nameerr { color: var(--bad); min-height: 1.2em; }
   .card { background: var(--panel); border-radius: 16px; padding: 28px 32px; text-align: center; width: min(100%, 380px); max-height: 100%; overflow-y: auto; }
   .card h2 { margin: 0 0 4px; } .card p { color: var(--muted); margin: 4px 0; }
   .card .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
@@ -108,12 +110,17 @@
 <div id="lbo"><div class="card">
   <h2>Daily leaderboard</h2><p id="lbday"></p>
   <ol id="lbl"></ol>
-  <div id="lbsubmit" hidden>
-    <input id="nick" maxlength="16" placeholder="Your name" autocomplete="off">
-    <button id="submitscore">Submit today’s score</button>
-  </div>
+  <p id="whoami"></p>
+  <button id="changename" class="ghostbtn">Change name</button>
   <p id="lbstatus"></p>
   <button id="lbclose" class="ghostbtn">Close</button>
+</div></div>
+<div id="nameo"><div class="card">
+  <h2>Pick a name</h2>
+  <p>Shown on the daily leaderboard. 3 to 16 letters, numbers, spaces, - or _.</p>
+  <input id="nameinput" maxlength="16" placeholder="Your name" autocomplete="off">
+  <p id="nameerr"></p>
+  <div class="row"><button id="namesave">Save name</button><button id="nameskip" class="ghostbtn">Skip for now</button></div>
 </div></div>
 
 <script>
@@ -443,7 +450,8 @@ function gameOver() {
     try { localStorage.setItem(dailyKey(), top); } catch (e) {}
     shareText = 'Block Puzzle Daily ' + today() + ': ' + top;
     showCard('Daily complete', 'Score ' + score, newbest,
-      'Today’s score: ' + top + '. Submit it to the leaderboard, or watch an ad for another go.', true);
+      'Today’s score: ' + top + '. Watch an ad for another go; your best score of the day counts.', true);
+    submitScore(true);
   } else showCard('Game over', 'Score ' + score, newbest, '', false);
   render();
 }
@@ -515,69 +523,109 @@ $('adbtn').addEventListener('click', startAd);
 $('adcancel').addEventListener('click', cancelAd);
 $('closebtn').addEventListener('click', () => $('over').classList.remove('show'));
 
-// ---- daily leaderboard: the artifact's shared database ----
-// board/<player id> holds { day, score, name }; everyone reads, each player writes only their own doc
-let dbh = null, myId = null, lbRows = [], lbFailed = false;
-async function initLeaderboard() {
-  if (!window.claude || !window.claude.use) return;
+// ---- daily leaderboard: /api (Vercel functions + Upstash Redis) ----
+// No accounts: a random player id lives in this browser and a chosen username is reserved for it on the server.
+const API_BASE = '';   // inside a native app this becomes the full site address
+function playerId() {
+  let id = null;
+  try { id = localStorage.getItem('bp-pid'); } catch (e) {}
+  if (!id) {
+    id = (crypto.randomUUID ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join(''));
+    try { localStorage.setItem('bp-pid', id); } catch (e) {}
+  }
+  return id;
+}
+let nick = '';
+try { nick = localStorage.getItem('bp-nick') || ''; } catch (e) {}
+let lbRows = [], lbYou = null, lbDay = today(), lbState = 'loading';   // loading | ok | down
+
+async function api(path, body) {
+  const r = await fetch(API_BASE + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(data.error || 'error'), { code: data.error || 'error' });
+  return data;
+}
+async function loadLb() {
   try {
-    dbh = await claude.use('db');
-    const user = await claude.use('user');
-    myId = user ? await user.id() : null;
-  } catch (e) { dbh = null; }
-  if (!dbh) { renderLb(); return; }
-  dbh.collection('board').where('day', '==', today()).orderBy('score', 'desc').limit(10).onSnapshot(
-    snap => { lbRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); lbFailed = false; renderLb(); },
-    () => { lbFailed = true; renderLb(); });
+    const d = await api('/api/top', { id: playerId() });
+    lbRows = d.rows; lbYou = d.you; lbDay = d.day; lbState = 'ok';
+  } catch (e) { lbState = 'down'; }
+  renderLb();
 }
 function renderLb() {
   const ol = $('lbl');
   ol.innerHTML = '';
-  $('lbday').textContent = today() + ' (UTC)';
+  $('lbday').textContent = lbDay + ' (UTC)';
+  $('whoami').textContent = nick ? 'Playing as ' + nick : 'You have no name yet.';
   const none = text => { const li = document.createElement('li'); li.className = 'none'; li.textContent = text; ol.appendChild(li); };
-  if (!dbh || lbFailed) return none('The leaderboard is not available here.');
+  if (lbState === 'loading') return none('Loading...');
+  if (lbState === 'down') return none('The leaderboard is not available right now.');
   if (!lbRows.length) return none('No scores yet today. Be the first.');
-  lbRows.forEach((r, i) => {
+  const row = (r) => {
     const li = document.createElement('li');
-    if (r.id === myId) li.className = 'me';
-    for (const [cls, text] of [['rk', i + 1], ['nm', r.name || 'Player'], ['sc', r.score]]) {
+    if (r.me) li.className = 'me';
+    for (const [cls, text] of [['rk', r.rank], ['nm', r.name], ['sc', r.score]]) {
       const s = document.createElement('span');
       s.className = cls; s.textContent = text; li.appendChild(s);
     }
     ol.appendChild(li);
-  });
+  };
+  lbRows.forEach(row);
+  if (lbYou && !lbRows.some(r => r.me)) row({ rank: lbYou.rank, name: nick || 'You', score: lbYou.score, me: true });
 }
-function openLb() {
+async function openLb() {
+  lbState = 'loading';
+  $('lbstatus').textContent = '';
   renderLb();
-  const mine = dailyResult();
-  $('lbsubmit').hidden = !(dbh && myId && mine !== null);
-  $('lbstatus').textContent = !dbh ? '' : !myId ? 'Sign in to claude.ai to submit a score.'
-    : mine === null ? 'Finish a daily game to submit your score.' : '';
-  try { $('nick').value = localStorage.getItem('bp-nick') || ''; } catch (e) {}
   $('lbo').classList.add('show');
+  await submitScore(false);   // make sure today's score is on the board, then show it
+  loadLb();
 }
-async function submitScore() {
+// sends today's best score; with promptName, asks for a username first if the player has none
+async function submitScore(promptName) {
   const mine = dailyResult();
-  if (!dbh || !myId || mine === null) return;
-  const name = $('nick').value.trim().slice(0, 16) || 'Player';
-  try { localStorage.setItem('bp-nick', name); } catch (e) {}
-  const btn = $('submitscore'), ref = dbh.doc('board/' + myId);
+  if (mine === null) return;
+  if (!nick) { if (promptName) openName(false); return; }
+  try { await api('/api/score', { id: playerId(), score: mine }); }
+  catch (e) {
+    if (e.code === 'no_name') { nick = ''; openName(false); }   // the server lost this name; claim it again
+    $('lbstatus').textContent = 'Could not send your score yet.';
+  }
+}
+
+// ---- username prompt ----
+function openName(first) {
+  $('nameinput').value = nick;
+  $('nameerr').textContent = '';
+  $('nameskip').textContent = first ? 'Skip for now' : 'Cancel';
+  $('nameo').classList.add('show');
+  setTimeout(() => $('nameinput').focus(), 50);
+}
+async function saveName() {
+  const name = $('nameinput').value.trim();
+  const btn = $('namesave');
   btn.disabled = true;
   try {
-    const cur = await ref.get();
-    const d = cur.exists ? cur.data() : null;
-    const score = d && d.day === today() ? Math.max(d.score, mine) : mine;   // keep the day's best
-    await ref.set({ day: today(), score, name });
-    $('lbstatus').textContent = 'Submitted: ' + score;
+    const d = await api('/api/claim', { id: playerId(), name });
+    nick = d.name;
+    try { localStorage.setItem('bp-nick', nick); } catch (e) {}
+    $('nameo').classList.remove('show');
+    await submitScore(false);
+    if ($('lbo').classList.contains('show')) loadLb();
   } catch (e) {
-    $('lbstatus').textContent = 'Could not submit (' + (e.code || 'error') + '). Ask the owner for Contributor access.';
+    $('nameerr').textContent = e.code === 'taken' ? 'That name is taken. Try another.'
+      : e.code === 'bad_name' ? 'Use 3 to 16 letters, numbers, spaces, - or _. No rude words.'
+      : 'Could not reach the server. Try again.';
   }
   btn.disabled = false;
 }
+$('namesave').addEventListener('click', saveName);
+$('nameinput').addEventListener('keydown', e => { if (e.key === 'Enter') saveName(); });
+$('nameskip').addEventListener('click', () => $('nameo').classList.remove('show'));
+$('changename').addEventListener('click', () => openName(false));
 $('lbbtn').addEventListener('click', openLb);
 $('lbtop').addEventListener('click', openLb);
 $('lbclose').addEventListener('click', () => $('lbo').classList.remove('show'));
-$('submitscore').addEventListener('click', submitScore);
 let shareText = '';
 $('share').addEventListener('click', async () => {
   const b = $('share');
@@ -585,7 +633,7 @@ $('share').addEventListener('click', async () => {
   catch (e) { $('dailynote').textContent = shareText; b.textContent = 'Select the text above'; }
 });
 start();
-initLeaderboard();
+if (!nick) openName(true);   // first launch: choose a username (can be skipped)
 </script>
 </body>
 </html>
