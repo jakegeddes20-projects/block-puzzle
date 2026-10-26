@@ -2,92 +2,161 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1016">
+<meta name="description" content="Block Puzzle: drag pieces onto the board and clear rows and columns. A new daily challenge every day.">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>Block Puzzle</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230e1016'/%3E%3Crect x='5' y='5' width='10' height='10' rx='3' fill='%23ff6b81'/%3E%3Crect x='17' y='5' width='10' height='10' rx='3' fill='%23ffb938'/%3E%3Crect x='5' y='17' width='10' height='10' rx='3' fill='%234cc3ff'/%3E%3Crect x='17' y='17' width='10' height='10' rx='3' fill='%233fd9a0'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #12141c; --panel: #1b1f2b; --cell: #262b3a; --text: #e8ebf5; --muted: #8b93ab;
-    --accent: #ffb703; --bad: #ff5d73; --size: min(11vw, 52px);
+    --bg: #0e1016; --bg-glow: #1a2030; --panel: #151822; --raised: #1c2030; --cell: #1b1f2c;
+    --line: rgba(255,255,255,.06); --text: #eef1f8; --muted: #8a92a8; --accent: #ffb938; --accent-ink: #1a1200; --bad: #ff6b81;
+    --font: Outfit, system-ui, -apple-system, "Segoe UI", sans-serif;
+    /* board width = 8 cells + 12px padding; the page keeps 16px gutters */
+    --size: min(calc((100vw - 44px) / 8), 54px);
+    color-scheme: dark;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; touch-action: none; user-select: none; }
-  #app { max-width: 480px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
-  header { width: 100%; display: flex; justify-content: space-between; align-items: end; }
-  .stat small { display: block; color: var(--muted); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
-  .stat b { font-size: 32px; font-variant-numeric: tabular-nums; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+  body { min-height: 100vh; min-height: 100dvh; background: radial-gradient(120% 55% at 50% -8%, var(--bg-glow) 0%, var(--bg) 62%) no-repeat, var(--bg); }
+  button { font-family: inherit; border: 0; cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  #app { max-width: 460px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 12px;
+    padding-top: max(14px, env(safe-area-inset-top)); padding-bottom: max(18px, env(safe-area-inset-bottom));
+    padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+
+  .topbar { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+  h1 { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 700; letter-spacing: .01em; }
+  .tools { display: flex; gap: 8px; }
+  .icon { width: 36px; height: 36px; border-radius: 12px; background: var(--panel); color: var(--muted); border: 1px solid var(--line);
+    font-size: 16px; font-weight: 700; display: grid; place-items: center; padding: 0; transition: color .15s, background .15s; }
+  .icon:hover { color: var(--text); background: var(--raised); }
+  .icon svg { width: 18px; height: 18px; }
+
+  .seg { width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
+  .seg button { background: transparent; color: var(--muted); border-radius: 12px; padding: 8px 0 7px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    font-size: 14px; font-weight: 700; line-height: 1.1; transition: background .15s, color .15s; }
+  .seg button small { font-size: 10px; font-weight: 500; opacity: .75; letter-spacing: .02em; }
+  .seg button:hover { color: var(--text); }
+  .seg button.on { background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 14px -6px var(--accent); }
+
+  .scorebar { width: 100%; display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; padding: 0 4px; }
+  .stat small { display: block; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+  .stat b { display: block; font-size: 34px; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
   .stat.right { text-align: right; }
-  .stat.combo { text-align: center; color: var(--accent); }
-  .stat.combo small { color: var(--accent); }
+  .stat.right b { color: var(--muted); }
+  .stat.combo { text-align: center; padding: 4px 14px 2px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .stat.combo small, .stat.combo b { color: var(--accent); }
+  .stat.combo b { font-size: 26px; }
   .stat.combo.pop b { animation: pop .35s ease-out; }
-  @keyframes pop { 0% { transform: scale(1.6); } 100% { transform: scale(1); } }
-  @media (prefers-reduced-motion: reduce) { .stat.combo.pop b { animation: none; } }
+  @keyframes pop { 0% { transform: scale(1.5); } 100% { transform: scale(1); } }
+
+  #boardwrap { position: relative; }
   #board { display: grid; grid-template-columns: repeat(8, var(--size)); grid-template-rows: repeat(8, var(--size));
-    background: var(--panel); padding: 6px; border-radius: 14px; position: relative; }
+    background: var(--panel); padding: 6px; border-radius: 22px; touch-action: none;
+    box-shadow: 0 0 0 1px var(--line), 0 18px 40px -24px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.03); }
+  #board.glow { animation: glow .5s ease-out; }
+  @keyframes glow { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); } 100% { box-shadow: 0 0 0 14px transparent; } }
   .cell { padding: 2px; }
-  .cell i { display: block; width: 100%; height: 100%; border-radius: 6px; background: var(--cell); transition: background .12s; }
-  .cell.on i { background: var(--c); }
-  .cell.ghost i { background: var(--c); opacity: .45; }
-  .cell.clearing i { background: #fff; }
-  #tray { width: 100%; display: flex; justify-content: space-around; align-items: center; height: calc(var(--size) * 3 + 16px);
-    background: var(--panel); border-radius: 14px; }
-  .slot { width: 30%; display: flex; justify-content: center; align-items: center; height: 100%; cursor: grab; }
-  #next { width: 100%; display: flex; justify-content: space-around; align-items: center; height: calc(var(--size) * 1.6);
-    background: var(--panel); border-radius: 14px; position: relative; opacity: .85; }
-  #next[hidden] { display: none; }
-  #next small { position: absolute; top: 6px; left: 12px; color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
-  .nslot { width: 30%; display: flex; justify-content: center; align-items: center; height: 100%; padding-top: 10px; }
-  .nslot .q { color: var(--muted); font-size: 22px; font-weight: 700; }
-  .piece.mini .pc { width: calc(var(--size) * .3); height: calc(var(--size) * .3); padding: 1px; }
-  #diff { display: flex; gap: 8px; width: 100%; }
-  #over button { margin-inline: 4px; }
-  #diff button { flex: 1; margin: 0; padding: 10px 0; font-size: 14px; background: var(--panel); color: var(--muted); }
-  #diff button.on { background: var(--accent); color: #1b1300; }
-  .slot.sel { outline: 2px solid var(--accent); outline-offset: -6px; border-radius: 12px; }
+  .cell i, .pc i { display: block; width: 100%; height: 100%; border-radius: 28%; }
+  .cell i { background: var(--cell); box-shadow: inset 0 0 0 1px rgba(255,255,255,.025); }
+  .cell.on i, .pc i, .cell.fx-burst i {
+    background: linear-gradient(155deg, color-mix(in srgb, var(--c) 72%, #fff) 0%, var(--c) 52%, color-mix(in srgb, var(--c) 80%, #000) 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.4), inset 0 -2px 0 rgba(0,0,0,.16), 0 3px 8px -3px color-mix(in srgb, var(--c) 55%, transparent); }
+  .cell.ghost i { background: color-mix(in srgb, var(--c) 42%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--c) 70%, transparent); }
+  .cell.fx-land i { animation: land .24s ease-out both; animation-delay: var(--d, 0ms); }
+  .cell.fx-burst i { animation: burst .46s ease-in both; animation-delay: var(--d, 0ms); }
+  @keyframes land { 0% { transform: scale(.72); filter: brightness(1.7); } 60% { transform: scale(1.07); } 100% { transform: scale(1); filter: none; } }
+  @keyframes burst { 0% { transform: scale(1); opacity: 1; filter: brightness(2.2); } 35% { transform: scale(1.14); opacity: 1; filter: brightness(2.6); } 100% { transform: scale(.15); opacity: 0; filter: brightness(2); } }
+
+  #pop { position: absolute; left: 50%; top: 34%; transform: translate(-50%, 0); pointer-events: none; text-align: center; opacity: 0; line-height: 1.15; }
+  #pop b { display: block; font-size: 40px; font-weight: 800; color: var(--accent); text-shadow: 0 2px 18px rgba(0,0,0,.6); }
+  #pop span { display: block; font-size: 15px; font-weight: 700; color: var(--text); text-shadow: 0 2px 10px rgba(0,0,0,.7); }
+  #pop.run { animation: floatup .95s ease-out both; }
+  @keyframes floatup { 0% { opacity: 0; transform: translate(-50%, 14px) scale(.8); } 18% { opacity: 1; transform: translate(-50%, 0) scale(1.08); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -34px) scale(1); } }
+
+  #tray { width: 100%; display: flex; justify-content: space-around; align-items: center; height: calc(var(--size) * 2.95);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 20px; }
+  .slot { width: 31%; display: flex; justify-content: center; align-items: center; height: 88%; cursor: grab; border-radius: 14px; touch-action: none; transition: background .15s; }
+  .slot:hover { background: rgba(255,255,255,.03); }
+  .slot.sel { background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 2px var(--accent); }
   .piece { display: grid; gap: 0; }
   .piece .pc { width: calc(var(--size) * .55); height: calc(var(--size) * .55); padding: 1.5px; }
-  .piece .pc i { display: block; width: 100%; height: 100%; border-radius: 4px; background: var(--c); }
-  .piece .pc.e i { background: transparent; }
-  #ghost { position: fixed; z-index: 10; pointer-events: none; display: none; }
+  .piece .pc.e i { background: none; box-shadow: none; }
+  #ghost { position: fixed; z-index: 10; pointer-events: none; display: none; filter: drop-shadow(0 10px 14px rgba(0,0,0,.45)); }
   #ghost .pc { width: var(--size); height: var(--size); padding: 2px; }
-  #over, #ad, #lbo, #nameo { position: fixed; inset: 0; background: #0009; display: none; align-items: center; justify-content: center; z-index: 20; padding: 16px; }
-  #over.show, #ad.show, #lbo.show, #nameo.show { display: flex; }
-  #ad { z-index: 30; }
-  #nameo { z-index: 40; }
-  #nameerr { color: var(--bad); min-height: 1.2em; }
-  .card { background: var(--panel); border-radius: 16px; padding: 28px 32px; text-align: center; width: min(100%, 380px); max-height: 100%; overflow-y: auto; }
-  .card h2 { margin: 0 0 4px; } .card p { color: var(--muted); margin: 4px 0; }
-  .card .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-  .card .row button { margin-top: 12px; }
-  button.ghostbtn { background: var(--cell); color: var(--text); }
-  #lbtop { margin: 0; padding: 10px 0; width: 100%; font-size: 14px; background: var(--cell); color: var(--text); }
+
+  #next { width: 100%; display: flex; align-items: center; justify-content: space-around; height: calc(var(--size) * 1.25); padding-left: 52px; position: relative;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
+  #next[hidden] { display: none; }
+  #next small { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+  .nslot { width: 30%; display: flex; justify-content: center; align-items: center; height: 100%; }
+  .nslot .q { color: var(--muted); font-size: 20px; font-weight: 700; opacity: .6; }
+  .piece.mini .pc { width: calc(var(--size) * .27); height: calc(var(--size) * .27); padding: 1px; }
+
+  #lbtop { width: 100%; padding: 12px 0; border-radius: 14px; background: var(--panel); color: var(--text); border: 1px solid var(--line); font-size: 14px; font-weight: 600; transition: background .15s; }
+  #lbtop:hover { background: var(--raised); }
   #lbtop[hidden] { display: none; }
-  #adtime { font-size: 40px; font-weight: 800; color: var(--accent); }
-  #lbl { list-style: none; margin: 12px 0; padding: 0; text-align: left; }
-  #lbl li { display: flex; gap: 10px; padding: 8px 10px; border-radius: 8px; font-variant-numeric: tabular-nums; }
-  #lbl li:nth-child(odd) { background: var(--cell); }
-  #lbl li.me { outline: 2px solid var(--accent); }
-  #lbl .rk { width: 22px; color: var(--muted); }
-  #lbl .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #lbl .sc { font-weight: 700; }
-  #lbl .none { display: block; text-align: center; color: var(--muted); background: none; }
-  input { user-select: text; -webkit-user-select: text; width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--cell);
-    background: var(--bg); color: var(--text); font-size: 16px; }
-  input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  button { margin-top: 16px; background: var(--accent); color: #1b1300; border: 0; border-radius: 10px; padding: 12px 24px; font-size: 16px; font-weight: 700; cursor: pointer; }
+
+  /* overlays */
+  #over, #ad, #lbo, #nameo, #help { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 16px; z-index: 20;
+    background: rgba(8,10,16,.7); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  #over.show, #ad.show, #lbo.show, #nameo.show, #help.show { display: flex; }
+  #ad { z-index: 30; } #nameo { z-index: 40; } #help { z-index: 35; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 24px; padding: 26px 24px; text-align: center; width: min(100%, 380px); max-height: 100%; overflow-y: auto;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,.7); animation: cardin .22s ease-out; }
+  @keyframes cardin { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+  .card h2 { margin: 0 0 6px; font-size: 24px; font-weight: 800; }
+  .card p { color: var(--muted); margin: 6px 0; line-height: 1.45; font-size: 15px; }
+  #final { color: var(--text); font-size: 38px; font-weight: 800; line-height: 1.1; margin: 8px 0 2px; font-variant-numeric: tabular-nums; }
+  #newbest { color: var(--accent); font-weight: 600; min-height: 1.2em; }
+  .card .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+  .card button { background: var(--accent); color: var(--accent-ink); border-radius: 14px; padding: 13px 22px; font-size: 16px; font-weight: 700; margin-top: 12px; transition: filter .15s; }
+  .card .row button { margin-top: 0; }
+  .card button:hover { filter: brightness(1.08); }
+  .card button.ghostbtn { background: var(--raised); color: var(--text); border: 1px solid var(--line); }
+  #adtime { font-size: 54px; font-weight: 800; color: var(--accent); margin: 6px 0; }
+  .steps { list-style: none; margin: 16px 0 6px; padding: 0; text-align: left; display: grid; gap: 12px; counter-reset: s; }
+  .steps li { position: relative; padding-left: 40px; color: var(--muted); font-size: 15px; line-height: 1.4; counter-increment: s; }
+  .steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 10px; background: var(--raised); color: var(--accent);
+    display: grid; place-items: center; font-weight: 800; font-size: 14px; }
+  .steps b { color: var(--text); }
+  .card p.small { font-size: 13px; text-align: left; }
+  #lbl { list-style: none; margin: 14px 0; padding: 0; text-align: left; display: grid; gap: 4px; }
+  #lbl li { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--raised); font-variant-numeric: tabular-nums; }
+  #lbl li.me { background: color-mix(in srgb, var(--accent) 16%, var(--raised)); box-shadow: inset 0 0 0 1.5px var(--accent); }
+  #lbl .rk { width: 22px; color: var(--muted); font-weight: 700; }
+  #lbl .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  #lbl .sc { font-weight: 800; }
+  #lbl .none { display: block; text-align: center; color: var(--muted); background: none; padding: 18px 0; }
+  input { user-select: text; -webkit-user-select: text; width: 100%; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: 500 16px var(--font); margin-top: 8px; }
+  #nameerr { color: var(--bad); min-height: 1.3em; font-size: 14px; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important; } }
 </style>
 </head>
 <body>
 <div id="app">
-  <header>
+  <div class="topbar">
+    <h1><svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="12" height="12" rx="4" fill="#ff6b81"/><rect x="17" y="3" width="12" height="12" rx="4" fill="#ffb938"/><rect x="3" y="17" width="12" height="12" rx="4" fill="#4cc3ff"/><rect x="17" y="17" width="12" height="12" rx="4" fill="#3fd9a0"/></svg>Block Puzzle</h1>
+    <div class="tools">
+      <button id="soundbtn" class="icon" aria-label="Sound" aria-pressed="true"></button>
+      <button id="helpbtn" class="icon" aria-label="How to play">?</button>
+    </div>
+  </div>
+  <div id="diff" class="seg"></div>
+  <div class="scorebar">
     <div class="stat"><small>Score</small><b id="score">0</b></div>
     <div id="combo" class="stat combo" style="visibility:hidden"><small>Combo</small><b id="combon">×0</b></div>
     <div class="stat right"><small>Best</small><b id="best">0</b></div>
-  </header>
-  <div id="board"></div>
+  </div>
+  <div id="boardwrap"><div id="board"></div><div id="pop"><b></b><span></span></div></div>
   <div id="tray"></div>
   <div id="next"></div>
-  <div id="diff"></div>
   <button id="lbtop" hidden>Daily leaderboard</button>
 </div>
 <div id="ghost"></div>
@@ -122,10 +191,21 @@
   <p id="nameerr"></p>
   <div class="row"><button id="namesave">Save name</button><button id="nameskip" class="ghostbtn">Skip for now</button></div>
 </div></div>
+<div id="help"><div class="card">
+  <h2>How to play</h2>
+  <ol class="steps">
+    <li><b>Place.</b> Drag a piece onto the board, or tap a piece and then tap where it goes.</li>
+    <li><b>Clear.</b> Fill a whole row or column to clear it.</li>
+    <li><b>Combo.</b> Clear lines on back-to-back turns for bonus points.</li>
+    <li><b>Daily.</b> Everyone gets the same pieces. One go a day, and an ad earns another.</li>
+  </ol>
+  <p class="small">The game ends when none of your pieces fit. Easy shows your next 3 pieces, Medium shows 1, Hard shows none.</p>
+  <button id="helpclose">Got it</button>
+</div></div>
 
 <script>
 const N = 8;
-const COLORS = ['#ef476f', '#ffb703', '#06d6a0', '#4cc9f0', '#9b5de5', '#f77f00'];
+const COLORS = ['#ff6b81', '#ffb938', '#3fd9a0', '#4cc3ff', '#a07bff', '#ff8f4d'];
 const SHAPES = [
   [[1]], [[1,1]], [[1,1,1]], [[1,1,1,1]], [[1,1,1,1,1]],
   [[1],[1]], [[1],[1],[1]], [[1],[1],[1],[1]], [[1],[1],[1],[1],[1]],
@@ -222,14 +302,31 @@ function pieceHTML(p, cls) {
   return el;
 }
 
+// short-lived board effects: { idx, type: 'land' | 'burst', color?, d?, t0 }
+const FX_LIFE = 720;
+let fx = [];
+function addFx(list) {
+  const t0 = performance.now();
+  list.forEach(f => fx.push({ ...f, t0 }));
+  setTimeout(() => { fx = fx.filter(f => performance.now() - f.t0 < FX_LIFE); renderBoard(); }, FX_LIFE + 20);
+}
+
 function renderBoard(ghost) {
+  const now = performance.now();
+  const active = new Map();
+  fx.forEach(f => { if (now - f.t0 < FX_LIFE) active.set(f.idx, f); });
   boardEl.innerHTML = '';
   for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const idx = r * N + c, f = active.get(idx);
     const d = document.createElement('div');
     d.className = 'cell';
     d.innerHTML = '<i></i>';
-    if (grid[r][c]) { d.classList.add('on'); d.style.setProperty('--c', grid[r][c]); }
-    else if (ghost && ghost.cells.has(r * N + c)) { d.classList.add('ghost'); d.style.setProperty('--c', ghost.color); }
+    if (grid[r][c]) {
+      d.classList.add('on'); d.style.setProperty('--c', grid[r][c]);
+      if (f && f.type === 'land') { d.classList.add('fx-land'); d.style.setProperty('--d', -(now - f.t0) + 'ms'); }
+    } else if (f && f.type === 'burst') {
+      d.classList.add('fx-burst'); d.style.setProperty('--c', f.color); d.style.setProperty('--d', (f.d - (now - f.t0)) + 'ms');
+    } else if (ghost && ghost.cells.has(idx)) { d.classList.add('ghost'); d.style.setProperty('--c', ghost.color); }
     boardEl.appendChild(d);
   }
 }
@@ -279,6 +376,7 @@ function showGhost(p) {
 function startDrag(e, idx) {
   e.preventDefault();
   if (locked) return;
+  sfx.tick();
   const wasSelected = sel && sel.idx === idx;
   clearSel();
   drag = { idx, p: pieces[idx], target: null, x: e.clientX, y: e.clientY, moved: false, wasSelected };
@@ -361,15 +459,23 @@ function place(idx, r, c) {
     if (grid.every(row => row[i])) cols.push(i);
   }
   const lines = rows.length + cols.length;
+  const burst = new Map();   // cleared cells and their colours, for the clear animation
+  rows.forEach(i => { for (let x = 0; x < N; x++) burst.set(i * N + x, grid[i][x]); });
+  cols.forEach(j => { for (let y = 0; y < N; y++) burst.set(y * N + j, grid[y][j]); });
   rows.forEach(i => { for (let x = 0; x < N; x++) grid[i][x] = null; });
   cols.forEach(j => { for (let y = 0; y < N; y++) grid[y][j] = null; });
+  const landed = [];
+  p.shape.forEach((row, i) => row.forEach((v, j) => { const k = (r + i) * N + c + j; if (v && !burst.has(k)) landed.push({ idx: k, type: 'land' }); }));
+  addFx([...landed, ...[...burst].map(([idx, color]) => ({ idx, color, type: 'burst', d: ((idx % N) + Math.floor(idx / N)) * 14 }))]);
 
   // combo: consecutive placements that each clear a line; from the 2nd on it adds 10 x (combo - 1)
   combo = lines ? combo + 1 : 0;
   const comboBonus = combo >= 2 ? 10 * (combo - 1) : 0;
-  score += Math.round((placed + (lines ? 10 * lines * lines : 0) + comboBonus) * DIFF[diff].mult);
+  const gain = Math.round((placed + (lines ? 10 * lines * lines : 0) + comboBonus) * DIFF[diff].mult);
+  score += gain;
   if (pieces.every(x => !x)) dealPieces();
   render();
+  feedback(lines, gain);
   if (!pieces.some(x => x && canPlaceAnywhere(x.shape))) gameOver();
   else saveGame();
 }
@@ -418,12 +524,16 @@ function renderNext() {
   });
 }
 
+const SUBS = {
+  easy: () => '3 ahead', medium: () => '1 ahead', hard: () => 'blind',
+  daily: () => new Date(today() + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }),
+};
 function renderDiff() {
   const el = $('diff');
   el.innerHTML = '';
   for (const k in DIFF) {
     const b = document.createElement('button');
-    b.textContent = DIFF[k].label;
+    b.innerHTML = DIFF[k].label + '<small>' + SUBS[k]() + '</small>';
     b.className = k === diff ? 'on' : '';
     b.addEventListener('click', () => setDiff(k));
     el.appendChild(b);
@@ -442,6 +552,7 @@ function gameOver() {
   if (isBest) { best = score; try { localStorage.setItem('bp-best-' + diff, best); } catch (e) {} }
   locked = true;
   clearSave();
+  sfx.over();
   const newbest = isBest ? 'New best!' : 'Best ' + best;
   if (diff === 'daily') {
     // everyone gets one go; the best of any extra goes (bought with an ad) is the day's score
@@ -449,10 +560,14 @@ function gameOver() {
     const top = prev === null ? score : Math.max(prev, score);
     try { localStorage.setItem(dailyKey(), top); } catch (e) {}
     shareText = 'Block Puzzle Daily ' + today() + ': ' + top;
-    showCard('Daily complete', 'Score ' + score, newbest,
-      'Today’s score: ' + top + '. Watch an ad for another go; your best score of the day counts.', true);
-    submitScore(true);
-  } else showCard('Game over', 'Score ' + score, newbest, '', false);
+    // short delay so the last clear animation is seen before the card covers the board
+    setTimeout(() => {
+      if (!locked || diff !== 'daily') return;   // the player already moved on
+      showCard('Daily complete', 'Score ' + score, newbest,
+        'Today’s score: ' + top + '. Watch an ad for another go; your best score of the day counts.', true);
+      submitScore(true);
+    }, 500);
+  } else setTimeout(() => { if (locked && diff !== 'daily') showCard('Game over', 'Score ' + score, newbest, '', false); }, 500);
   render();
 }
 
@@ -632,8 +747,86 @@ $('share').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(shareText); b.textContent = 'Copied'; }
   catch (e) { $('dailynote').textContent = shareText; b.textContent = 'Select the text above'; }
 });
+// ---- sound and vibration (synthesised, no audio files) ----
+let soundOn = true;
+try { soundOn = localStorage.getItem('bp-sound') !== '0'; } catch (e) {}
+let actx = null;
+function audio() {
+  if (!soundOn) return null;
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e) { return null; }
+  return actx;
+}
+function tone(freq, dur, type, vol, when, slideTo) {
+  const a = audio();
+  if (!a) return;
+  const t = a.currentTime + (when || 0), o = a.createOscillator(), g = a.createGain();
+  o.type = type || 'sine';
+  o.frequency.setValueAtTime(freq, t);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol || 0.07, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(a.destination);
+  o.start(t); o.stop(t + dur + 0.03);
+}
+const NOTES = [523.25, 659.25, 783.99, 987.77, 1174.66, 1318.51];   // C major pentatonic-ish, rising
+const sfx = {
+  tick: () => tone(640, 0.05, 'sine', 0.04),
+  place: () => tone(250, 0.1, 'triangle', 0.09, 0, 150),
+  clear: (lines, cb) => {
+    const lift = Math.pow(2, Math.min(cb, 8) / 12);   // each combo step raises the pitch a semitone
+    tone(180, 0.12, 'triangle', 0.08, 0, 110);
+    for (let i = 0; i < Math.min(2 + lines, NOTES.length); i++) tone(NOTES[i] * lift, 0.22, 'sine', 0.07, 0.04 + i * 0.06);
+  },
+  over: () => [392, 330, 262, 196].forEach((f, i) => tone(f, 0.32, 'triangle', 0.08, 0.15 + i * 0.16)),
+};
+const buzz = pattern => { if (soundOn && navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) {} } };
+
+function feedback(lines, gain) {
+  if (lines) { sfx.clear(lines, combo); buzz([14, 40, 20]); showPop(gain, lines); }
+  else { sfx.place(); buzz(8); }
+}
+// floating "+points" over the board, with a glow when a clear is big
+function showPop(gain, lines) {
+  const el = $('pop');
+  el.querySelector('b').textContent = '+' + gain;
+  el.querySelector('span').textContent = [lines > 1 ? lines + ' lines' : '', combo >= 2 ? 'Combo ×' + combo : ''].filter(Boolean).join(' · ');
+  el.classList.remove('run'); void el.offsetWidth; el.classList.add('run');
+  if (lines > 1 || combo >= 2) { boardEl.classList.remove('glow'); void boardEl.offsetWidth; boardEl.classList.add('glow'); }
+}
+
+const ICON_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+const ICON_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m16 9 5 6"/><path d="m21 9-5 6"/></svg>';
+function renderSound() {
+  $('soundbtn').innerHTML = soundOn ? ICON_ON : ICON_OFF;
+  $('soundbtn').setAttribute('aria-pressed', String(soundOn));
+  $('soundbtn').setAttribute('aria-label', soundOn ? 'Sound on' : 'Sound off');
+}
+$('soundbtn').addEventListener('click', () => {
+  soundOn = !soundOn;
+  try { localStorage.setItem('bp-sound', soundOn ? '1' : '0'); } catch (e) {}
+  renderSound();
+  sfx.tick();
+});
+renderSound();
+
+// ---- how to play (shown on first launch) ----
+function closeHelp() {
+  $('help').classList.remove('show');
+  try { localStorage.setItem('bp-help', '1'); } catch (e) {}
+  if (!nick) openName(true);
+}
+$('helpbtn').addEventListener('click', () => $('help').classList.add('show'));
+$('helpclose').addEventListener('click', closeHelp);
+
 start();
-if (!nick) openName(true);   // first launch: choose a username (can be skipped)
+let seenHelp = false;
+try { seenHelp = !!localStorage.getItem('bp-help'); } catch (e) {}
+if (!seenHelp) $('help').classList.add('show');
+else if (!nick) openName(true);   // first launch: choose a username (can be skipped)
 </script>
 </body>
 </html>
