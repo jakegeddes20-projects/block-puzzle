@@ -1554,6 +1554,28 @@ function tone(freq, dur, type, vol, when, slideTo) {
   o.connect(g); g.connect(a.destination);
   o.start(t); o.stop(t + dur + 0.03);
 }
+// white noise through a filter that sweeps from one frequency to another, for explosions
+let noiseBuf = null;
+function noise(dur, vol, when, type, f0, f1) {
+  const a = audio();
+  if (!a) return;
+  if (!noiseBuf) {
+    noiseBuf = a.createBuffer(1, a.sampleRate * 2, a.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const t = a.currentTime + (when || 0), src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+  src.buffer = noiseBuf;
+  f.type = type || 'lowpass';
+  f.frequency.setValueAtTime(f0, t);
+  f.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol * 0.3), t + Math.max(0.02, dur * 0.4));   // a held body, then the fade
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(f); f.connect(g); g.connect(a.destination);
+  src.start(t); src.stop(t + dur + 0.05);
+}
 const NOTES = [523.25, 659.25, 783.99, 987.77, 1174.66, 1318.51];   // C major pentatonic-ish, rising
 const sfx = {
   tick: () => tone(640, 0.05, 'sine', 0.04),
@@ -1564,14 +1586,21 @@ const sfx = {
     for (let i = 0; i < Math.min(2 + lines, NOTES.length); i++) tone(NOTES[i] * lift, 0.22, 'sine', 0.07, 0.04 + i * 0.06);
   },
   over: () => [392, 330, 262, 196].forEach((f, i) => tone(f, 0.32, 'triangle', 0.08, 0.15 + i * 0.16)),
-  boom: () => { tone(120, 0.45, 'sawtooth', 0.12, 0, 38); tone(70, 0.6, 'square', 0.08, 0.02, 28); tone(900, 0.12, 'sine', 0.05, 0, 200); },
+  // a real bang: a sharp crack, a roaring noise burst that closes down, a deep thump and a rumbling tail
+  boom: () => {
+    noise(0.06, 0.32, 0, 'highpass', 2500, 2500);
+    noise(0.9, 0.5, 0.01, 'lowpass', 5000, 160);
+    noise(1.4, 0.18, 0.08, 'lowpass', 420, 90);
+    tone(95, 0.7, 'sine', 0.32, 0, 28);
+    tone(60, 0.9, 'triangle', 0.2, 0.02, 24);
+  },
   smash: () => { tone(170, 0.14, 'square', 0.1, 0, 55); tone(1100, 0.06, 'sine', 0.05, 0, 400); },
   perfect: () => [523.25, 659.25, 783.99, 1046.5, 1318.51, 1568].forEach((f, i) => tone(f, 0.3, 'sine', 0.07, i * 0.07)),
 };
 const buzz = pattern => { if (soundOn && navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) {} } };
 
 function feedback(lines, gain, perfect, booms) {
-  if (booms) { sfx.boom(); buzz([40, 30, 60, 30, 40]); if (perfect) sfx.perfect(); showPop(gain, lines, perfect, booms); }
+  if (booms) { sfx.boom(); buzz([60, 25, 90, 25, 60, 25, 40]); if (perfect) sfx.perfect(); showPop(gain, lines, perfect, booms); }
   else if (perfect) { sfx.perfect(); buzz([20, 40, 20, 40, 30]); showPop(gain, lines, true); }
   else if (lines) { sfx.clear(lines, combo); buzz([14, 40, 20]); showPop(gain, lines); }
   else { sfx.place(); buzz(8); }
