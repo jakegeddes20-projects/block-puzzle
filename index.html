@@ -289,31 +289,60 @@ const SHAPES_BIG = [
 ];
 const shapePool = () => SHAPES;   // classic: the original pieces on every board size
 
-// Crazy mode: piece size follows the board. S is the biggest box a piece may fill (3, 4, 5, 6 for 6x6 to 12x12).
-function blob(S) {
-  const maxCells = Math.round(S * S * 0.6) + 2;
-  const want = 3 + Math.floor(rand() * (maxCells - 2));
-  const cells = new Set([Math.floor(rand() * S) * S + Math.floor(rand() * S)]);
-  for (let guard = 0; cells.size < want && guard < 300; guard++) {   // grow one connected cell at a time
-    const arr = [...cells], base = arr[Math.floor(rand() * arr.length)];
-    const d = Math.floor(rand() * 4), y = Math.floor(base / S) + [-1, 1, 0, 0][d], x = (base % S) + [0, 0, -1, 1][d];
-    if (y >= 0 && y < S && x >= 0 && x < S) cells.add(y * S + x);
+// Crazy mode: piece size follows the board. S is the biggest box a piece may fill (3, 4, 5, 6 for 6x6 to 12x12),
+// and the cell count is capped well below a full box so pieces stay a manageable size.
+const crazyBox = () => Math.floor(N / 2);
+
+// A tidy piece: a solid rectangle with a corner or two bitten off, sometimes a notch in one edge.
+// That gives L, T, U and stepped shapes that look intentional, never a random scribble.
+function tidy(S) {
+  const maxCells = Math.round(S * S * 0.4) + 2;
+  for (let tries = 0; tries < 30; tries++) {
+    const w = 1 + Math.floor(rand() * S), h = 1 + Math.floor(rand() * S);
+    if (w * h < 3 || w * h > maxCells + 2) continue;
+    const g = Array.from({ length: h }, () => Array(w).fill(1));
+    if (w > 1 && h > 1) {
+      const bites = Math.floor(rand() * 3);   // 0, 1 or 2 corners
+      for (let i = 0; i < bites; i++) g[rand() < 0.5 ? 0 : h - 1][rand() < 0.5 ? 0 : w - 1] = 0;
+      if (w >= 3 && h >= 2 && rand() < 0.3) g[rand() < 0.5 ? 0 : h - 1][1 + Math.floor(rand() * (w - 2))] = 0;   // edge notch
+    }
+    const cells = g.flat().reduce((a, b) => a + b, 0);
+    if (cells >= 3 && cells <= maxCells && isOnePiece(g)) return g;
   }
-  let y0 = S, y1 = -1, x0 = S, x1 = -1;
-  cells.forEach(k => { const y = Math.floor(k / S), x = k % S; y0 = Math.min(y0, y); y1 = Math.max(y1, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); });
-  const shape = [];
-  for (let y = y0; y <= y1; y++) { const row = []; for (let x = x0; x <= x1; x++) row.push(cells.has(y * S + x) ? 1 : 0); shape.push(row); }
-  return shape;
+  return [[1, 1, 1]];
+}
+function isOnePiece(g) {   // every cell connected, no empty row or column
+  const h = g.length, w = g[0].length;
+  if (g.some(r => !r.some(Boolean))) return false;
+  for (let x = 0; x < w; x++) if (!g.some(r => r[x])) return false;
+  const start = g.flatMap((r, y) => r.map((v, x) => (v ? [y, x] : null))).find(Boolean);
+  const seen = new Set([start[0] * w + start[1]]), stack = [start];
+  while (stack.length) {
+    const [y, x] = stack.pop();
+    for (const [dy, dx] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const ny = y + dy, nx = x + dx;
+      if (ny >= 0 && ny < h && nx >= 0 && nx < w && g[ny][nx] && !seen.has(ny * w + nx)) { seen.add(ny * w + nx); stack.push([ny, nx]); }
+    }
+  }
+  return seen.size === g.flat().reduce((a, b) => a + b, 0);
 }
 function crazyShape() {
-  const S = Math.floor(N / 2), r = rand();
-  if (r < 0.2) return SHAPES[Math.floor(rand() * SHAPES.length)];   // a familiar piece now and then
-  if (r < 0.45) {                                                    // hand-made big shapes that suit this board
-    const cap = Math.round(S * S * 0.6) + 4;   // keep hand-made shapes in proportion to the board
+  const S = crazyBox(), r = rand();
+  if (r < 0.25) {                                                    // a familiar piece now and then, kept to the board's scale
+    const familiar = SHAPES.filter(sh => Math.max(sh.length, sh[0].length) <= S + 1);
+    return familiar[Math.floor(rand() * familiar.length)];
+  }
+  if (r < 0.55) {                                                    // hand-made bigger shapes that suit this board
+    const cap = Math.round(S * S * 0.4) + 1;   // keep hand-made shapes in proportion to the board
     const fit = SHAPES_BIG.filter(sh => Math.max(sh.length, sh[0].length) <= S + 1 && sh.flat().reduce((a, b) => a + b, 0) <= cap);
     if (fit.length) return fit[Math.floor(rand() * fit.length)];
   }
-  return blob(S);
+  return tidy(S);
+}
+// Crazy outside the daily: never deal a piece that has no room on the board right now.
+function fitShape() {
+  for (let i = 0; i < 40; i++) { const sh = crazyShape(); if (canPlaceAnywhere(sh)) return sh; }
+  return [[1]];
 }
 // a shape for the current mode and board
 const anyShape = () => (mode === 'crazy' ? crazyShape() : SHAPES[Math.floor(rand() * SHAPES.length)]);
@@ -368,6 +397,8 @@ const newHand = () => [newPiece(), newPiece(), newPiece()];
 function dealPieces() {
   pieces = nextPieces || newHand();
   nextPieces = newHand();
+  // crazy (not the daily, where everyone must get identical pieces): swap out any piece that cannot fit anywhere
+  if (mode === 'crazy' && diff !== 'daily') pieces = pieces.map(p => (canPlaceAnywhere(p.shape) ? p : { ...p, shape: fitShape() }));
   // medium and hard: guarantee at least one piece in the hand can be placed
   const safe = DIFF[diff].safe;
   if (safe && !pieces.some(p => canPlaceAnywhere(p.shape))) {
