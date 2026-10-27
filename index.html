@@ -124,6 +124,9 @@
     box-shadow: inset 0 1px 0 rgba(255,255,255,.4), inset 0 -2px 0 rgba(0,0,0,.16), 0 3px 8px -3px color-mix(in srgb, var(--c) 55%, transparent); }
   .cell.ghost i { background: color-mix(in srgb, var(--c) 42%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--c) 70%, transparent); }
   .cell.fx-land i { animation: land .24s ease-out both; animation-delay: var(--d, 0ms); }
+  .cell.fx-fall { z-index: 2; }
+  .cell.fx-fall i { animation: fall .4s cubic-bezier(.45, 0, .9, .6) both; animation-delay: var(--d, 0ms); }
+  @keyframes fall { from { transform: translateY(calc(var(--size) * var(--fr, 1) * -1)); } to { transform: none; } }
   .cell.fx-burst i { animation: burst .46s ease-in both; animation-delay: var(--d, 0ms); }
   @keyframes land { 0% { transform: scale(.72); filter: brightness(1.7); } 60% { transform: scale(1.07); } 100% { transform: scale(1); filter: none; } }
   @keyframes burst { 0% { transform: scale(1); opacity: 1; filter: brightness(2.2); } 35% { transform: scale(1.14); opacity: 1; filter: brightness(2.6); } 100% { transform: scale(.15); opacity: 0; filter: brightness(2); } }
@@ -156,7 +159,7 @@
   .nslot .q { color: var(--muted); font-size: 20px; font-weight: 700; opacity: .6; }
   .piece.mini .pc { width: var(--pc, var(--mcell)); height: var(--pc, var(--mcell)); padding: 1px; }
 
-  #mid { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
+  #mid { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; margin-top: 10px; }
   #mid #next { flex: none; height: auto; padding: 8px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); gap: 12px; justify-content: center; align-items: center; }
   #mid #next small { position: static; transform: none; font-size: 10px; }
   #mid .nslot { width: auto; min-width: 34px; height: auto; }
@@ -579,7 +582,7 @@
     <li><b>Remove.</b> In Crazy you can also remove one block: tap Remove, then tap any block on the board. One free per game, then an ad earns another.</li>
     <li><b>Help.</b> Undo takes back your last move and Hint shows a good spot. Each has one free use per game, then an ad earns another. The Daily has none of these.</li>
   </ol>
-  <p class="small">The game ends when none of your pieces fit. Easy shows your next 3 pieces, Medium shows 1, Hard shows none. Timed gives you 2 minutes, Puzzle sets a goal, and the Weekly Challenge changes its rules every week. Rising pushes new rows up from below, Sprint is a race to 20 lines, Zen never ends, and Cleanup starts with a messy board.</p>
+  <p class="small">The game ends when none of your pieces fit. Easy shows your next 3 pieces, Medium shows 1, Hard shows none. Timed gives you 2 minutes, Puzzle sets a goal, and the Weekly Challenge changes its rules every week. In Rising, blocks fall after a clear and can chain into combos while new rows push up from below, Sprint is a race to 20 lines, Zen never ends, and Cleanup starts with a messy board.</p>
   <button id="helpclose">Got it</button>
 </div></div>
 
@@ -598,7 +601,7 @@ const COLORS = ['#ff6b81', '#ffb938', '#3fd9a0', '#4cc3ff', '#a07bff', '#ff8f4d'
 const stats = { games: 0, lines: 0, bestCombo: 0, bestClear: 0, perfects: 0, topScore: 0, streak: 0, bestStreak: 0, lastDaily: '', solved: {}, booms: 0, weeklyRuns: 0, challengeWins: 0, purchases: 0 };
 try { Object.assign(stats, JSON.parse(localStorage.getItem('bp-stats')) || {}); } catch (e) {}
 // ---- coins and tools ----
-const TOOLS = ['undo', 'hint', 'remove', 'shuffle', 'line', 'freeze'];
+const TOOLS = ['undo', 'hint', 'remove', 'shuffle', 'line'];
 const ITEMS = {
   undo:    { name: 'Undo',       desc: 'Take back your last move',                price: 10, bundle: [5, 40] },
   hint:    { name: 'Hint',       desc: 'Shows a good spot for a piece',           price: 10, bundle: [5, 40] },
@@ -810,6 +813,7 @@ const DIFF = {
   // puzzle: a fixed 8x8 board and a fixed hand with a goal, no random pieces
   puzzle: { label: 'Puzzle', preview: 0, safe: false,    mult: 1 },
 };
+DIFF.puzzle.tools = false; DIFF.timed.tools = false;   // Puzzle and Timed are pure skill, like the Daily
 DIFF.daily.tools = false;   // the Daily is pure skill: no undo, hint, remove or power-ups
 // the rules in force right now (later levels add their own through this one place)
 DIFF.weekly = { label: 'Weekly', preview: 0, safe: false, mult: 1, tools: false, seeded: true };
@@ -819,7 +823,7 @@ let chal = null;
 const CHAL_BASES = ['easy', 'medium', 'hard', 'timed'];
 DIFF.challenge = { label: 'Challenge', preview: 1, safe: false, mult: 1, tools: false, seeded: true, hidden: true };
 // extra modes
-DIFF.rising  = { label: 'Rising',  preview: 1, safe: 'hidden', mult: 1, rise: true };      // a new row pushes up every few moves
+DIFF.rising  = { label: 'Rising',  preview: 1, safe: 'hidden', mult: 1, rise: true, gravity: true };   // rows push up, and blocks fall after a clear
 DIFF.sprint  = { label: 'Sprint',  preview: 1, safe: 'hidden', mult: 1, sprint: 20 };      // clear 20 lines as fast as you can
 DIFF.zen     = { label: 'Zen',     preview: 3, safe: 'any',    mult: 1, zen: true };       // no game over, unlimited undo and hints
 DIFF.cleanup = { label: 'Cleanup', preview: 1, safe: 'hidden', mult: 1, messy: true };      // start with a cluttered board
@@ -978,6 +982,7 @@ function renderBoard(ghost) {
       d.classList.add('on'); d.style.setProperty('--c', skinColor(grid[r][c])); d.dataset.k = kOf(grid[r][c]);
       if (bombs.has(idx)) d.classList.add('bomb');
       if (f && f.type === 'land') { d.classList.add('fx-land'); d.style.setProperty('--d', -(now - f.t0) + 'ms'); }
+      if (f && f.type === 'fall') { d.classList.add('fx-fall'); d.style.setProperty('--fr', f.rows); d.style.setProperty('--d', -(now - f.t0) + 'ms'); }
     } else if (f && f.type === 'burst') {
       d.classList.add('fx-burst'); d.style.setProperty('--c', skinColor(f.color)); d.dataset.k = kOf(f.color); d.style.setProperty('--d', (f.d - (now - f.t0)) + 'ms');
     } else if (hinted) { d.classList.add('hintcell'); d.style.setProperty('--c', skinColor(hint.color)); }
@@ -1034,7 +1039,7 @@ function showGhost(p) {
 
 function startDrag(e, idx) {
   e.preventDefault();
-  if (locked) return;
+  if (locked || cascading) return;
   if (hammerMode) { hammerMode = false; render(); }
   sfx.tick();
   const wasSelected = sel && sel.idx === idx;
@@ -1192,17 +1197,75 @@ function place(idx, r, c) {
   trackMove(lines, booms, perfect);
   if (diff === 'puzzle') { render(); feedback(lines, gain, perfect, booms); checkPuzzle(); return; }
   if (cfg().sprint && gameLines >= cfg().sprint) { render(); feedback(lines, gain, perfect, booms); sprintOver(); return; }
-  if (cfg().rise && --riseLeft <= 0) {   // Rising: the next row pushes up
-    riseLeft = riseInterval();
-    if (!riseRow()) { render(); feedback(lines, gain, perfect, booms); gameOver('rise'); return; }
+  if (cfg().gravity && (lines > 0 || booms > 0)) {   // Rising: blocks fall and may chain, so the move finishes after the cascade
+    render(); feedback(lines, gain, perfect, booms); tutAfterMove(lines);
+    runCascade();
+    return;
   }
+  riseStep();
   if (pieces.every(x => !x)) dealPieces();
   render();
   feedback(lines, gain, perfect, booms);
   tutAfterMove(lines);
+  endChecks();
+}
+function riseStep() {
+  if (cfg().rise && --riseLeft <= 0) { riseLeft = riseInterval(); riseRow(); }   // a row that has no room to rise is skipped
+}
+function endChecks() {
   if (cfg().zen && score > best) { best = score; try { localStorage.setItem('bp-best-' + SZ() + diff, best); } catch (e) {} }
   if (!pieces.some(x => x && canPlaceAnywhere(x.shape))) { if (cfg().zen) { zenRescue(); saveGame(); } else gameOver(); }
   else saveGame();
+}
+
+// ---- Rising: after a clear every block falls into the next empty space; a line that completes counts as a combo ----
+let cascading = false, cascadeTok = 0;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function dropBlocks() {
+  const nb = new Set(), moves = [];
+  for (let x = 0; x < N; x++) {
+    let w = N - 1;
+    for (let y = N - 1; y >= 0; y--) {
+      if (!grid[y][x]) continue;
+      const had = bombs.has(y * N + x);
+      if (y !== w) { grid[w][x] = grid[y][x]; grid[y][x] = null; moves.push({ idx: w * N + x, type: 'fall', rows: w - y }); }
+      if (had) nb.add(w * N + x);
+      w--;
+    }
+  }
+  bombs = nb;
+  return moves;
+}
+async function runCascade() {
+  const tok = ++cascadeTok; cascading = true;
+  hint = null;
+  for (let guard = 0; guard < 40; guard++) {
+    await sleep(520);                       // the clear animation plays first
+    if (tok !== cascadeTok) return;
+    const moves = dropBlocks();
+    if (!moves.length) break;
+    addFx(moves); render(); sfx.tick();
+    await sleep(440);                       // then the blocks fall
+    if (tok !== cascadeTok) return;
+    const rows = [], cols = [];
+    for (let i = 0; i < N; i++) { if (grid[i].every(Boolean)) rows.push(i); if (grid.every(row => row[i])) cols.push(i); }
+    if (!rows.length && !cols.length) break;
+    const { lines, booms, blastCount } = resolveClears(rows, cols);
+    const perfect = grid.every(row => row.every(x => !x));
+    combo += 1; gameLines += lines; gameCombo = Math.max(gameCombo, combo);
+    stats.lines += lines; stats.bestCombo = Math.max(stats.bestCombo, combo); stats.bestClear = Math.max(stats.bestClear, lines);
+    if (perfect) stats.perfects++;
+    const gain = Math.round((10 * lines * lines + 10 * (combo - 1) + (perfect ? Math.round(100 * N / 8) : 0) + blastCount * 2 + booms * 10) * cfg().mult);
+    score += gain;
+    saveStats(); checkUnlocks(); trackMove(lines, booms, perfect);
+    render(); feedback(lines, gain, perfect, booms);
+  }
+  if (tok !== cascadeTok) return;
+  cascading = false;
+  riseStep();
+  if (pieces.every(x => !x)) dealPieces();
+  render();
+  endChecks();
 }
 
 // ---- each difficulty keeps its own game in progress (Timed and Puzzle always start fresh) ----
@@ -1301,7 +1364,7 @@ function paintCombo() {
     $('combolabel').textContent = 'Time'; $('combon').textContent = fmtWatch(watch.elapsed);
     return;
   }
-  if (cfg().rise) {   // Rising shows how many moves until the next row
+  if (cfg().rise && combo < 2) {   // Rising shows how many moves until the next row (a combo takes its place)
     cb.style.visibility = 'visible';
     $('combolabel').textContent = 'Next row'; $('combon').textContent = 'in ' + riseLeft;
     cb.classList.toggle('urgent', riseLeft <= 1);
@@ -1324,7 +1387,7 @@ function paintCombo() {
 }
 function renderTools() {
   const blocked = noTools();
-  $('bottomrow').hidden = blocked && cfg().preview === 0;
+  $('bottomrow').hidden = blocked;
   const u = $('undobtn'), h = $('hintbtn'), hm = $('hammerbtn'), tl = $('toolsbtn');
   [u, h, tl].forEach(b => { b.hidden = blocked; });
   const badge = n => (n === Infinity ? '\u221e' : n > 0 ? n : 'Ad');
@@ -1337,7 +1400,7 @@ function renderTools() {
   hm.classList.toggle('active', hammerMode);
   hm.querySelector('b').textContent = badge(chargesOf('remove'));
   tl.disabled = locked;
-  tl.querySelector('b').textContent = wallet.inv.shuffle + wallet.inv.line + wallet.inv.freeze;
+  tl.querySelector('b').textContent = wallet.inv.shuffle + wallet.inv.line;
   $('bottomrow').classList.toggle('many', [u, h, hm, tl].filter(b => !b.hidden).length >= 4);   // four tools leave no room for labels
   boardEl.classList.toggle('hammering', hammerMode);
   boardEl.classList.toggle('lining', lineArm === 'row' || lineArm === 'col');
@@ -1404,9 +1467,9 @@ const DESCS = {
 };
 const DOTS = { challenge: '#ff6b81', weekly: '#c77dff', easy: '#3fd9a0', medium: '#ffb938', hard: '#ff6b81', timed: '#a07bff', daily: '#4cc3ff', puzzle: '#ff8f4d',
   rising: '#ff8f4d', sprint: '#00d9ff', zen: '#9be7c4', cleanup: '#ffd166' };
-Object.assign(SUBS, { rising: () => 'rows rise', sprint: () => '20 lines', zen: () => 'no game over', cleanup: () => 'messy start' });
+Object.assign(SUBS, { rising: () => 'gravity', sprint: () => '20 lines', zen: () => 'no game over', cleanup: () => 'messy start' });
 Object.assign(DESCS, {
-  rising: 'A new row pushes up every few moves. Do not let it reach the top.',
+  rising: 'Blocks fall after every clear, and chains build combos. New rows push up from below.',
   sprint: 'Clear 20 lines as fast as you can. Your best time is saved.',
   zen: 'Relax: unlimited undo and hints, and your pieces always fit.',
   cleanup: 'Start with a cluttered board and tidy it up for points.',
@@ -1709,7 +1772,7 @@ function riseRow() {
   bombs = new Set([...bombs].map(k => k - N).filter(k => k >= 0));
   const cols = [];
   for (let x = 0; x < N; x++) if (grid.every(r => r[x])) cols.push(x);   // a new row can finish a column
-  if (cols.length) resolveClears([], cols);
+  if (cols.length) { resolveClears([], cols); if (cfg().gravity) dropBlocks(); }
   addFx(grid[N - 1].map((c, x) => (c ? { idx: (N - 1) * N + x, type: 'land' } : null)).filter(Boolean));
   sfx.tick(); buzz(30); toast('New row!');
   return true;
@@ -1776,7 +1839,7 @@ function spend(t) {
 
 // ---- undo and hint ----
 function undo() {
-  if (noTools() || (locked && diff !== 'puzzle') || !history) return;
+  if (cascading || noTools() || (locked && diff !== 'puzzle') || !history) return;
   if (chargesOf('undo') <= 0) { startAd('undo'); return; }
   const s = JSON.parse(history);
   ({ grid, pieces, nextPieces, score, combo, rs, gameLines, gameCombo } = s);
@@ -1844,7 +1907,7 @@ function bestMove() {
   return top;
 }
 function showHint() {
-  if (locked || noTools()) return;
+  if (locked || cascading || noTools()) return;
   if (chargesOf('hint') <= 0) { startAd('hint'); return; }
   const m = bestMove();
   if (!m) return;
@@ -1979,7 +2042,7 @@ document.querySelectorAll('#shoptabs button').forEach(b => b.addEventListener('c
 $('coinbtn').addEventListener('click', () => openShop());
 $('shopclose').addEventListener('click', closeShop);
 
-// ---- power-ups sheet: Shuffle, Line Clear, Freeze and Restart ----
+// ---- power-ups sheet: Shuffle, Line Clear and Restart ----
 function openSheet() { renderSheet(); $('sheet').classList.add('show'); }
 function closeSheet() { $('sheet').classList.remove('show'); }
 let restartArmed = false;
@@ -1995,7 +2058,6 @@ function renderSheet() {
   const timed = !!cfg().time, puz = diff === 'puzzle';
   row('Shuffle', 'Swap your three pieces for new ones. You have ' + wallet.inv.shuffle, useShuffle, 'Use', puz || locked);
   row('Line Clear', 'Clear a whole row or column. You have ' + wallet.inv.line, useLine, 'Use', locked);
-  row('Freeze', timed ? 'Adds 10 seconds. You have ' + wallet.inv.freeze : 'Only works in Timed. You have ' + wallet.inv.freeze, useFreeze, 'Use', !timed || locked);
   row('Restart', restartArmed ? 'Tap again to throw this game away' : 'Start this game over', () => { if (!restartArmed) { restartArmed = true; renderSheet(); setTimeout(() => { restartArmed = false; }, 4000); return; } restartArmed = false; closeSheet(); reset(); }, restartArmed ? 'Sure?' : 'Restart', false);
   const shop = document.createElement('button'); shop.className = 'ghostbtn'; shop.textContent = 'Get more in the Shop'; shop.style.display = 'block'; shop.style.margin = '12px auto 0';
   shop.addEventListener('click', () => { closeSheet(); openShop(); });
@@ -2040,7 +2102,7 @@ $('undobtn').addEventListener('click', undo);
 $('hintbtn').addEventListener('click', showHint);
 
 function reset(save = true) {
-  locked = false; cardShown = false;
+  locked = false; cardShown = false; cascading = false; cascadeTok++;
   stopTimer();
   watch.elapsed = 0; riseLeft = riseInterval();
   hint = null; history = null; bombs = new Set();
