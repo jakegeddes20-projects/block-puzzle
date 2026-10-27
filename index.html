@@ -232,7 +232,7 @@
     <li><b>Place.</b> Drag a piece onto the board, or tap a piece and then tap where it goes.</li>
     <li><b>Clear.</b> Fill a whole row or column to clear it.</li>
     <li><b>Combo.</b> Clear lines on back-to-back turns for bonus points.</li>
-    <li><b>Daily.</b> Everyone gets the same pieces. One go a day, and an ad earns another.</li>
+    <li><b>Daily.</b> Everyone gets the same pieces. One go a day, and an ad earns another (up to 3 extra).</li>
   </ol>
   <p class="small">The game ends when none of your pieces fit. Easy shows your next 3 pieces, Medium shows 1, Hard shows none.</p>
   <button id="helpclose">Got it</button>
@@ -623,7 +623,7 @@ function gameOver() {
     setTimeout(() => {
       if (!locked || diff !== 'daily') return;   // the player already moved on
       showCard('Daily complete', 'Score ' + score, newbest,
-        'Today’s score: ' + top + '. Watch an ad for another go; your best score of the day counts.', true);
+        'Today’s score: ' + top + '. ' + (adsLeft() ? 'Watch an ad for another go; your best score of the day counts.' : 'No extra goes left today. Come back tomorrow for new pieces.'), true);
       submitScore(true);
     }, 500);
   } else setTimeout(() => { if (locked && diff !== 'daily') showCard('Game over', 'Score ' + score, newbest, '', false); }, 500);
@@ -637,7 +637,8 @@ function showCard(title, final, newbest, note, isDaily) {
   $('dailynote').textContent = note;
   $('dailynote').hidden = !note;
   $('again').hidden = isDaily;
-  $('adbtn').hidden = !isDaily;
+  $('adbtn').hidden = !isDaily || adsLeft() === 0;
+  $('adbtn').textContent = 'Watch ad for another go (' + adsLeft() + ' left)';
   $('lbbtn').hidden = !isDaily;
   $('share').hidden = !isDaily;
   $('share').textContent = 'Copy result';
@@ -650,12 +651,17 @@ function showDailyDone() {
   const r = dailyResult();
   shareText = 'Block Puzzle 2 Daily ' + today() + ': ' + r;
   showCard('Daily played', 'Today’s score: ' + r, '',
-    'Come back tomorrow for new pieces, or watch an ad for another go. Your best score of the day counts.', true);
+    adsLeft() ? 'Watch an ad for another go. Your best score of the day counts.' : 'No extra goes left today. Come back tomorrow for new pieces.', true);
 }
 
-// ---- rewarded ad (placeholder until AdMob is wired in) ----
+// ---- rewarded ad (placeholder until AdMob is wired in): at most 3 extra daily goes a day ----
+const MAX_ADS = 3;
+const adsKey = () => 'bp-ads-' + today();
+function adsUsed() { try { return +localStorage.getItem(adsKey()) || 0; } catch (e) { return 0; } }
+const adsLeft = () => Math.max(0, MAX_ADS - adsUsed());
 let adTimer = null;
 function startAd() {
+  if (adsLeft() === 0) return;
   $('over').classList.remove('show');
   $('ad').classList.add('show');
   let n = 5;
@@ -664,7 +670,12 @@ function startAd() {
   adTimer = setInterval(() => {
     n--;
     $('adtime').textContent = n;
-    if (n <= 0) { clearInterval(adTimer); $('ad').classList.remove('show'); reset(); }
+    if (n <= 0) {
+      clearInterval(adTimer);
+      $('ad').classList.remove('show');
+      try { localStorage.setItem(adsKey(), adsUsed() + 1); } catch (e) {}   // only a finished ad uses up an extra go
+      reset();
+    }
   }, 1000);
 }
 function cancelAd() {
