@@ -265,6 +265,7 @@
   .sw i { width: 12px; height: 12px; border-radius: 4px; display: block; }
   #settings .card > button, #settingsbody > .ghostbtn { display: block; margin-left: auto; margin-right: auto; }
   #settingsbody > .ghostbtn { margin-top: 14px; }
+  .credits { margin: 14px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; text-align: center; }
   .sublabel { margin: 14px 0 0; color: var(--muted); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
 
   body.lefty .topbar { flex-direction: row-reverse; }
@@ -1626,6 +1627,7 @@ function toggleSound() {
   try { localStorage.setItem('bp-sound', soundOn ? '1' : '0'); } catch (e) {}
   renderSound();
   sfx.tick();
+  syncMusic();
 }
 $('soundbtn').addEventListener('click', toggleSound);
 renderSound();
@@ -1636,6 +1638,51 @@ function applyTheme(t, persist = true) {
   document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'light' ? '#f3f4f8' : '#0e1016');
 }
 applyTheme(document.documentElement.dataset.theme || 'dark', false);
+
+// ---- background music ----
+// Plays through the same audio context as the effects so the volume works on iPhones too (they ignore audio.volume).
+let musicOn = true, musicVol = 0.3;
+try { musicOn = localStorage.getItem('bp-music') !== '0'; const v = +localStorage.getItem('bp-musicvol'); if ([0.15, 0.3, 0.5].includes(v)) musicVol = v; } catch (e) {}
+let musicEl = null, musicGain = null;
+const musicWanted = () => soundOn && musicOn && !document.hidden;
+function fadeMusic(v) {
+  if (musicGain && actx) { const t = actx.currentTime; musicGain.gain.cancelScheduledValues(t); musicGain.gain.setTargetAtTime(v, t, 0.35); }
+  else if (musicEl) musicEl.volume = v;
+}
+function startMusic() {
+  if (!musicWanted()) return;
+  const a = audio();
+  if (!a) return;
+  if (!musicEl) {
+    musicEl = new Audio('/music/lofi-vinyl-teapot.mp3');
+    musicEl.loop = true;
+    try {
+      const src = a.createMediaElementSource(musicEl);
+      musicGain = a.createGain(); musicGain.gain.value = 0;
+      src.connect(musicGain); musicGain.connect(a.destination);
+    } catch (e) { musicGain = null; musicEl.volume = 0; }
+  }
+  musicEl.play().then(() => fadeMusic(musicVol)).catch(() => {});
+}
+function stopMusic() {
+  if (!musicEl) return;
+  fadeMusic(0);
+  setTimeout(() => { if (!musicWanted() && musicEl) musicEl.pause(); }, 900);
+}
+const syncMusic = () => (musicWanted() ? startMusic() : stopMusic());
+function toggleMusic() {
+  musicOn = !musicOn;
+  try { localStorage.setItem('bp-music', musicOn ? '1' : '0'); } catch (e) {}
+  syncMusic();
+}
+function setMusicVol(v) {
+  musicVol = v;
+  try { localStorage.setItem('bp-musicvol', v); } catch (e) {}
+  if (musicWanted()) fadeMusic(v);
+}
+document.addEventListener('visibilitychange', syncMusic);
+// browsers only allow sound after a tap, so music begins with the first touch
+document.addEventListener('pointerdown', syncMusic, { once: true, capture: true });
 
 // ---- toast and unlocks ----
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show'); }
@@ -1690,6 +1737,8 @@ function renderSettings() {
   const keep = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
   row('Theme', '', seg([['dark', 'Dark'], ['light', 'Light']], document.documentElement.dataset.theme, applyTheme));
   row('Sound and vibration', '', sw(soundOn, toggleSound));
+  row('Music', '', sw(musicOn, toggleMusic));
+  row('Music volume', '', seg([[0.15, 'Low'], [0.3, 'Medium'], [0.5, 'High']], musicVol, setMusicVol));
   row('Colour-blind marks', 'Adds a shape to each colour', sw(cbMode, () => { cbMode = !cbMode; keep('bp-cb', cbMode ? '1' : '0'); document.body.classList.toggle('cb', cbMode); render(); }));
   row('Drag height', 'How far a piece floats above your finger', seg([[20, 'Low'], [40, 'Medium'], [70, 'High']], LIFT, v => { LIFT = v; keep('bp-lift', v); }));
   row('Left-handed layout', 'Moves the buttons to the left', sw(lefty, () => { lefty = !lefty; keep('bp-lefty', lefty ? '1' : '0'); document.body.classList.toggle('lefty', lefty); }));
@@ -1710,6 +1759,9 @@ function renderSettings() {
   const hb = document.createElement('button'); hb.className = 'ghostbtn'; hb.textContent = 'How to play';
   hb.addEventListener('click', () => $('help').classList.add('show'));
   body.appendChild(hb);
+  const cr = document.createElement('p'); cr.className = 'credits';
+  cr.textContent = 'Music: “Lofi Vinyl Teapot” by Ornave, from Pixabay (Pixabay Content License).';
+  body.appendChild(cr);
 }
 $('settingsbtn').addEventListener('click', () => { renderSettings(); $('settings').classList.add('show'); });
 $('settingsclose').addEventListener('click', () => $('settings').classList.remove('show'));
