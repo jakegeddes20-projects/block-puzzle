@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e1016">
-<script>try{var t=localStorage.getItem("bp-theme");if(t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";document.documentElement.dataset.theme=t;}catch(e){}</script>
+<script>try{var t=localStorage.getItem("bp-theme");if(t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";document.documentElement.dataset.theme=t;var l=localStorage.getItem("bp-look");if(["neon","candy","wood","ocean","space"].indexOf(l)>=0)document.documentElement.dataset.look=l;}catch(e){}</script>
 <meta name="description" content="Block Puzzle 2: drag pieces onto the board and clear rows and columns. A new daily challenge every day.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Block Puzzle 2">
@@ -14,7 +14,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230e1016'/%3E%3Crect x='5' y='5' width='10' height='10' rx='3' fill='%23ff6b81'/%3E%3Crect x='17' y='5' width='10' height='10' rx='3' fill='%23ffb938'/%3E%3Crect x='5' y='17' width='10' height='10' rx='3' fill='%234cc3ff'/%3E%3Crect x='17' y='17' width='10' height='10' rx='3' fill='%233fd9a0'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Sora:wght@600;800&family=Fredoka:wght@500;600;700&family=Fraunces:wght@600&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0e1016; --panel: #151822; --raised: #1c2030; --cell: #1b1f2c; --cell-ring: rgba(255,255,255,.025);
@@ -347,6 +347,103 @@
   #boardwrap.shake { animation: shake .38s ease-out; }
   @keyframes shake { 0%, 100% { transform: none; } 15% { transform: translate(-5px, 2px); } 35% { transform: translate(5px, -3px); } 55% { transform: translate(-3px, 3px); } 75% { transform: translate(3px, -1px); } }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important; } }
+
+  body { background: var(--bgfx, var(--bg)); background-attachment: fixed; }
+  .card, .levelmenu, #toast, #modebar, #coach { background: var(--cardbg, var(--panel)); }
+  #callout { position: absolute; left: 0; right: 0; top: 13%; text-align: center; pointer-events: none; opacity: 0; font-size: 36px; font-weight: 800; font-style: italic; color: var(--accent-text); text-shadow: 0 2px 18px var(--pop-shadow); z-index: 4; }
+  #callout.run { animation: callout 1.1s ease-out both; }
+  @keyframes callout { 0% { opacity: 0; transform: rotate(-4deg) scale(.5); } 15% { opacity: 1; transform: rotate(-4deg) scale(1.15); } 30% { transform: rotate(-4deg) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: rotate(-4deg) translateY(-16px); } }
+  #flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 12; background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--accent) 50%, transparent), transparent 65%); }
+  #flash.run { animation: flash .5s ease-out; }
+  @keyframes flash { 0% { opacity: .9; } 100% { opacity: 0; } }
+  #newbest.pill { display: inline-block; padding: 5px 12px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 800; margin-bottom: 2px; }
+  .tiles.three { grid-template-columns: repeat(3, 1fr); }
+  .tiles.three .tile { text-align: center; padding: 12px 6px; }
+  .tiles.three .tile b { font-size: 22px; }
+  .goal { text-align: left; padding: 10px 12px; border-radius: 14px; background: var(--raised); margin-top: 8px; }
+  .gtop { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 600; }
+  .gtop span:last-child { color: var(--muted); flex: none; }
+  #shoptabs { margin: 0 auto 10px; width: max-content; }
+  .looks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .lookcard { border-radius: 16px; overflow: hidden; background: var(--raised); border: 1.5px solid var(--line); display: flex; flex-direction: column; }
+  .lookcard.on { border-color: var(--accent); }
+  .lookpv { height: 78px; display: grid; place-items: center; }
+  .lookgrid { display: grid; grid-template-columns: repeat(4, 14px); gap: 2px; }
+  .lookgrid i { width: 14px; height: 14px; border-radius: 4px; display: block; }
+  .lookinfo { padding: 8px 10px 10px; display: grid; gap: 6px; text-align: left; }
+  .lookinfo b { font-size: 14px; font-weight: 700; }
+  .lookinfo small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 1px; }
+  .card .lookinfo .buybtn { margin: 0; width: 100%; flex: none; }
+  .hint { margin: 8px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+  #splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #f1ecff; font-family: Sora, Outfit, system-ui, sans-serif;
+    background: radial-gradient(110% 60% at 50% 38%, #3a1685 0%, #150b3a 50%, #080517 100%); transition: opacity .35s; animation: splashout .4s 2.4s forwards; }
+  #splash.out { opacity: 0; pointer-events: none; }
+  @keyframes splashout { to { opacity: 0; visibility: hidden; } }
+  #splash .ic { width: 112px; height: 112px; border-radius: 28px; display: grid; grid-template-columns: repeat(2, 34px); gap: 6px; align-content: center; justify-content: center; background: linear-gradient(150deg, #2a1163, #0b0820); box-shadow: 0 0 0 2px rgba(255,255,255,.12), 0 0 50px rgba(179,107,255,.6); }
+  #splash .ic i { width: 34px; height: 34px; border-radius: 10px; box-shadow: inset 0 2px 0 rgba(255,255,255,.55), inset 0 -4px 0 rgba(0,0,0,.28), 0 0 16px var(--c); background: linear-gradient(160deg, color-mix(in srgb, var(--c) 55%, #fff), var(--c) 70%); }
+  #splash b { font-size: 28px; font-weight: 800; margin-top: 18px; text-shadow: 0 0 22px #b36bff; }
+  #splash small { font-size: 11px; letter-spacing: .3em; opacity: .65; font-weight: 600; }
+
+  /* ---- looks: each one sets the colour tokens, the block style and the effects ---- */
+  :root[data-look="neon"][data-theme] { --bg: #080517; --bgfx: radial-gradient(120% 60% at 50% 30%, #2a1163 0%, #120a33 45%, #080517 100%); --panel: rgba(255,255,255,.06); --raised: rgba(255,255,255,.1); --cell: rgba(255,255,255,.045); --cell-ring: rgba(255,255,255,.05);
+    --line: rgba(255,255,255,.12); --hover: rgba(255,255,255,.07); --text: #f1ecff; --muted: #b2a9d6; --accent: #c58bff; --accent-text: #d9b0ff; --accent-ink: #14082c; --bad: #ff6b81; --cardbg: #1a1040;
+    --shadow: 0 0 30px -10px rgba(179,107,255,.5); --card-shadow: 0 0 40px -10px rgba(179,107,255,.5); --overlay: rgba(8,5,23,.82); --pop-shadow: rgba(179,107,255,.8); --font: Sora, Outfit, system-ui, sans-serif; color-scheme: dark; }
+  :root[data-look="neon"] #board { box-shadow: 0 0 0 1px rgba(179,107,255,.35), 0 0 40px rgba(179,107,255,.3), inset 0 0 30px rgba(0,0,0,.35); }
+  :root[data-look="neon"] .cell.on i, :root[data-look="neon"] .pc i, :root[data-look="neon"] .cell.fx-burst i { background: linear-gradient(160deg, color-mix(in srgb, var(--c) 55%, #fff), var(--c) 70%);
+    box-shadow: inset 0 2px 0 rgba(255,255,255,.55), inset 0 -3px 0 rgba(0,0,0,.28), 0 0 10px color-mix(in srgb, var(--c) 60%, transparent); }
+  :root[data-look="neon"] #pop b, :root[data-look="neon"] #callout { color: #fff; font-style: italic; text-shadow: 0 0 12px #ff4d8d, 0 0 30px #ff4d8d, 0 0 50px #b36bff; }
+  :root[data-look="neon"] .stat.combo { background: linear-gradient(135deg, #ff4d8d, #ff9f43); box-shadow: 0 0 24px #ff4d8d88; }
+  :root[data-look="neon"] .stat.combo small, :root[data-look="neon"] .stat.combo b { color: #fff; }
+  :root[data-look="neon"] .stat b { text-shadow: 0 0 18px rgba(179,107,255,.6); }
+  :root[data-look="neon"] #newgame, :root[data-look="neon"] #again { background: linear-gradient(135deg, #b36bff, #ff4d8d); color: #fff; box-shadow: 0 0 26px rgba(255,77,141,.45); }
+
+  :root[data-look="ocean"][data-theme] { --bg: #06192e; --bgfx: linear-gradient(180deg, #0c3b66 0%, #06192e 70%); --panel: rgba(255,255,255,.07); --raised: rgba(255,255,255,.11); --cell: rgba(255,255,255,.05); --cell-ring: rgba(255,255,255,.06);
+    --line: rgba(255,255,255,.14); --hover: rgba(255,255,255,.08); --text: #e6f6ff; --muted: #9fc2da; --accent: #2ee6d6; --accent-text: #5ff0e2; --accent-ink: #031a24; --bad: #ff8fa8; --cardbg: #0b2a4a;
+    --shadow: 0 0 30px -10px rgba(46,230,214,.45); --card-shadow: 0 0 40px -10px rgba(46,230,214,.4); --overlay: rgba(4,18,34,.82); --pop-shadow: rgba(46,230,214,.7); --font: Outfit, system-ui, sans-serif; color-scheme: dark; }
+  :root[data-look="ocean"] #board { box-shadow: 0 0 0 1px rgba(46,230,214,.35), 0 0 36px rgba(46,230,214,.25), inset 0 0 30px rgba(0,20,40,.5); }
+  :root[data-look="ocean"] .cell.on i, :root[data-look="ocean"] .pc i, :root[data-look="ocean"] .cell.fx-burst i { border-radius: 40%; background: radial-gradient(circle at 32% 26%, color-mix(in srgb, var(--c) 40%, #fff) 0%, var(--c) 60%);
+    box-shadow: inset 0 -3px 0 rgba(0,20,50,.3), 0 0 10px color-mix(in srgb, var(--c) 50%, transparent); }
+  :root[data-look="ocean"] #pop b, :root[data-look="ocean"] #callout { color: #fff; text-shadow: 0 0 12px #2ee6d6, 0 0 30px #2ee6d6; }
+  :root[data-look="ocean"] .stat.combo { background: linear-gradient(135deg, #2ee6d6, #3da5ff); }
+  :root[data-look="ocean"] .stat.combo small, :root[data-look="ocean"] .stat.combo b { color: #031a24; }
+
+  :root[data-look="space"][data-theme] { --bg: #05030f; --bgfx: radial-gradient(1px 1px at 20px 30px, #fff, transparent) 0 0 / 160px 160px, radial-gradient(1.5px 1.5px at 90px 90px, #fff, transparent) 0 0 / 200px 200px, radial-gradient(1px 1px at 140px 50px, #ffe9b0, transparent) 0 0 / 130px 130px, radial-gradient(120% 60% at 50% 30%, #2b1b57 0%, #0d0824 55%, #05030f 100%);
+    --panel: rgba(255,255,255,.06); --raised: rgba(255,255,255,.1); --cell: rgba(255,255,255,.045); --cell-ring: rgba(255,255,255,.05); --line: rgba(255,255,255,.12); --hover: rgba(255,255,255,.07); --text: #f3efff; --muted: #b3acd2;
+    --accent: #ffe14d; --accent-text: #ffe14d; --accent-ink: #1d1500; --bad: #ff8fa8; --cardbg: #15102e; --shadow: 0 0 30px -10px rgba(255,225,77,.3); --card-shadow: 0 0 40px -10px rgba(179,107,255,.5); --overlay: rgba(5,3,15,.84); --pop-shadow: rgba(255,225,77,.6); --font: Sora, Outfit, system-ui, sans-serif; color-scheme: dark; }
+  :root[data-look="space"] #board { box-shadow: 0 0 0 1px rgba(255,225,77,.3), 0 0 36px rgba(179,107,255,.35), inset 0 0 30px rgba(0,0,0,.4); }
+  :root[data-look="space"] .cell.on i, :root[data-look="space"] .pc i, :root[data-look="space"] .cell.fx-burst i { border-radius: 50%; background: radial-gradient(circle at 34% 28%, color-mix(in srgb, var(--c) 35%, #fff) 0%, var(--c) 62%, color-mix(in srgb, var(--c) 70%, #000) 100%);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--c) 60%, transparent), inset 0 -3px 0 rgba(0,0,0,.25); }
+  :root[data-look="space"] #pop b, :root[data-look="space"] #callout { color: #fff; text-shadow: 0 0 12px #ffe14d, 0 0 30px #b36bff; }
+  :root[data-look="space"] .stat.combo { background: linear-gradient(135deg, #ffe14d, #ff9ab9); }
+  :root[data-look="space"] .stat.combo small, :root[data-look="space"] .stat.combo b { color: #1d1500; }
+
+  :root[data-look="candy"][data-theme] { --bg: #ffe9f2; --bgfx: linear-gradient(180deg, #ffe3f1 0%, #ffeede 55%, #fff4c9 100%); --panel: #ffffff; --raised: #fdeef5; --cell: #fbeef4; --cell-ring: transparent;
+    --line: rgba(214,51,108,.14); --hover: rgba(214,51,108,.06); --text: #4a2a52; --muted: #85598a; --accent: #ff7ab3; --accent-text: #c2255c; --accent-ink: #4a0f2d; --bad: #e5484d; --cardbg: #ffffff;
+    --shadow: 0 8px 0 #f3c7da; --card-shadow: 0 20px 40px -16px rgba(214,51,108,.4); --overlay: rgba(255,233,242,.82); --pop-shadow: rgba(255,255,255,.95); --font: Fredoka, Outfit, system-ui, sans-serif; color-scheme: light; }
+  :root[data-look="candy"] h1 { color: #d6336c; }
+  :root[data-look="candy"] #board { border-radius: 28px; box-shadow: 0 8px 0 #f3c7da, 0 18px 30px rgba(214,51,108,.18); }
+  :root[data-look="candy"] #tray { border-radius: 24px; box-shadow: 0 5px 0 #f3c7da; }
+  :root[data-look="candy"] .cell i { border-radius: 40%; }
+  :root[data-look="candy"] .cell.on i, :root[data-look="candy"] .pc i, :root[data-look="candy"] .cell.fx-burst i { border-radius: 40%; background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--c) 45%, #fff) 0%, var(--c) 58%);
+    box-shadow: inset 0 -4px 0 color-mix(in srgb, var(--c) 70%, #000), 0 2px 0 color-mix(in srgb, var(--c) 60%, #000 25%); }
+  :root[data-look="candy"] #pop b, :root[data-look="candy"] #callout { color: #ff5fa2; -webkit-text-stroke: 3px #fff; paint-order: stroke fill; text-shadow: 0 5px 0 #c2255c; }
+  :root[data-look="candy"] #pop span { text-shadow: none; }
+  :root[data-look="candy"] .stat.combo { background: #ffd23f; box-shadow: 0 4px 0 #e6a800; border-radius: 999px; }
+  :root[data-look="candy"] .stat.combo small, :root[data-look="candy"] .stat.combo b { color: #7a4300; }
+  :root[data-look="candy"] .stat b { color: #d6336c; }
+  :root[data-look="candy"] .stat.right b { color: var(--muted); }
+
+  :root[data-look="wood"][data-theme] { --bg: #2a1d15; --bgfx: radial-gradient(100% 55% at 50% 30%, #4a3426 0%, #2a1d15 70%, #1c130e 100%); --panel: #5a3b24; --raised: #6b4629; --cell: #352419; --cell-ring: rgba(0,0,0,.25);
+    --line: rgba(243,230,208,.18); --hover: rgba(243,230,208,.08); --text: #f3e6d0; --muted: #d0bc9d; --accent: #e0b25a; --accent-text: #f0c878; --accent-ink: #2a1d15; --bad: #ff9a8a; --cardbg: #4a3426;
+    --shadow: 0 14px 30px rgba(0,0,0,.45); --card-shadow: 0 28px 50px -10px rgba(0,0,0,.7); --overlay: rgba(28,19,14,.84); --pop-shadow: rgba(0,0,0,.6); --font: "DM Sans", Outfit, system-ui, sans-serif; color-scheme: dark; }
+  :root[data-look="wood"] h1, :root[data-look="wood"] .stat b, :root[data-look="wood"] .card h2, :root[data-look="wood"] #pop b, :root[data-look="wood"] #callout { font-family: Fraunces, Georgia, serif; }
+  :root[data-look="wood"] #board { background: linear-gradient(135deg, #7a5232, #5c3c24); box-shadow: 0 14px 30px rgba(0,0,0,.5), inset 0 2px 0 rgba(255,255,255,.18), inset 0 -3px 0 rgba(0,0,0,.35); border-radius: 20px; }
+  :root[data-look="wood"] #tray { background: linear-gradient(135deg, #6b4629, #553720); box-shadow: inset 0 2px 0 rgba(255,255,255,.15), inset 0 -3px 0 rgba(0,0,0,.3); }
+  :root[data-look="wood"] .cell i { border-radius: 14%; box-shadow: inset 0 1px 3px rgba(0,0,0,.5); }
+  :root[data-look="wood"] .cell.on i, :root[data-look="wood"] .pc i, :root[data-look="wood"] .cell.fx-burst i { border-radius: 14%; background: repeating-linear-gradient(95deg, rgba(0,0,0,.05) 0 2px, transparent 2px 7px), linear-gradient(145deg, color-mix(in srgb, var(--c) 70%, #fff), var(--c));
+    box-shadow: inset 0 2px 0 rgba(255,255,255,.35), inset 0 -3px 0 rgba(0,0,0,.28), 0 2px 3px rgba(0,0,0,.4); }
+  :root[data-look="wood"] #pop b, :root[data-look="wood"] #callout { color: #f6d58f; text-shadow: 0 2px 10px rgba(0,0,0,.7); }
+
   body.rm *, body.rm *::before, body.rm *::after { animation-duration: .001ms !important; animation-delay: 0s !important; transition-duration: .001ms !important; }
 </style>
 </head>
@@ -373,6 +470,7 @@
     <div class="stat right"><small id="bestlabel">Best</small><b id="best">0</b></div>
   </div>
   <div id="boardwrap"><div id="board"></div><div id="pop"><b></b><span></span></div>
+    <div id="callout"></div>
     <div id="coach" hidden><span id="coachtext"></span><button id="coachskip" class="mini">Skip</button></div>
     <div id="modebar" hidden><span id="modetext"></span><button id="modrow" class="mini">Row</button><button id="modcol" class="mini">Column</button><button id="modcancel" class="mini ghost">Cancel</button></div></div>
   <div id="tray"></div>
@@ -389,9 +487,11 @@
   <button id="lbtop" hidden>Daily leaderboard</button>
 </div>
 <div id="ghost"></div>
+<div id="flash"></div>
 <div id="toast" role="status"></div>
+<div id="splash"><div class="ic"><i style="--c:#ff3d7f"></i><i style="--c:#ffd21f"></i><i style="--c:#19d9c9"></i><i style="--c:#b36bff"></i></div><b>Block Puzzle 2</b><small>FILL THE LINES</small></div>
 <div id="over"><div class="card">
-  <h2 id="otitle">Game over</h2><p id="final"></p><p id="newbest"></p><p id="gostats" hidden></p><p id="dailynote" hidden></p>
+  <h2 id="otitle">Game over</h2><p id="final"></p><p id="newbest"></p><div id="gotiles" class="tiles three" hidden></div><div id="gonext" hidden></div><p id="gostats" hidden></p><p id="dailynote" hidden></p>
   <div class="row">
     <button id="again">Play again</button>
     <button id="adbtn" hidden>Watch ad to play again</button>
@@ -432,6 +532,7 @@
 <div id="shop"><div class="card left">
   <h2>Shop</h2>
   <p class="balance"><i class="coin big"></i><b id="shopcoins">0</b> coins</p>
+  <div id="shoptabs" class="mini-seg"><button data-tab="items">Power-ups</button><button data-tab="looks">Themes</button></div>
   <div id="shopbody"></div>
   <button id="shopclose" class="ghostbtn">Close</button>
 </div></div>
@@ -518,8 +619,29 @@ const SKINS = {
 const skinUnlocked = k => !SKINS[k].need || Object.entries(SKINS[k].need).every(([stat, v]) => stats[stat] >= v);
 let skin = 'classic';
 try { const k = localStorage.getItem('bp-skin'); if (SKINS[k]) skin = k; } catch (e) {}
+// looks: whole-game themes bought with coins. Each one has its own colours, block style and effects (see the data-look CSS).
+const LOOKS = {
+  classic: { label: 'Classic', sub: 'Clean and flat',     price: 0,    colors: null, pv: '#1c2030', tc: null },
+  neon:    { label: 'Neon',    sub: 'Glowing arcade',     price: 300,  colors: ['#ff4d8d', '#ffd21f', '#22e58f', '#3da5ff', '#b36bff', '#ff8f2e'], pv: 'radial-gradient(circle,#2a1163,#0b0820)', tc: '#080517', glow: true },
+  candy:   { label: 'Candy',   sub: 'Glossy and sweet',   price: 400,  colors: ['#ff5f9a', '#ffd23f', '#4dd37a', '#4cb2ff', '#a66bff', '#ff9a3d'], pv: 'linear-gradient(#ffe3f1,#fff4c9)', tc: '#ffe3f1' },
+  wood:    { label: 'Zen wood', sub: 'Warm and calm',     price: 600,  colors: ['#bb7c74', '#e8c27e', '#8e9d5f', '#7d9bb0', '#a58bb5', '#d98f6a'], pv: 'linear-gradient(#4a3426,#2a1d15)', tc: '#2a1d15' },
+  ocean:   { label: 'Ocean',   sub: 'Deep blues',         price: 800,  colors: ['#2ee6d6', '#3da5ff', '#9fdcff', '#8affc9', '#6f8bff', '#ffd1a8'], pv: 'linear-gradient(#0c3b66,#06192e)', tc: '#06192e', glow: true },
+  space:   { label: 'Space',   sub: 'Stars and planets',  price: 1000, colors: ['#ffe14d', '#b36bff', '#ff9ab9', '#8ff6ef', '#7aa2ff', '#ffb27a'], pv: 'radial-gradient(circle,#2b1b57,#05030f)', tc: '#05030f', glow: true },
+};
+let look = 'classic', ownedLooks = ['classic'];
+try {
+  const l = localStorage.getItem('bp-look'); const o = JSON.parse(localStorage.getItem('bp-looks'));
+  if (Array.isArray(o)) ownedLooks = ['classic'].concat(o.filter(k => LOOKS[k] && k !== 'classic'));
+  if (LOOKS[l] && ownedLooks.includes(l)) look = l;
+} catch (e) {}
+function applyLook() {
+  const root = document.documentElement;
+  if (look === 'classic') delete root.dataset.look; else root.dataset.look = look;
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute('content', LOOKS[look].tc || (root.dataset.theme === 'light' ? '#f3f4f8' : '#0e1016'));
+}
 const kOf = c => COLORS.indexOf(c);
-const skinColor = c => { const i = kOf(c); return i < 0 ? c : SKINS[skin].colors[i]; };
+const skinColor = c => { const i = kOf(c); return i < 0 ? c : (LOOKS[look].colors || SKINS[skin].colors)[i]; };
 let cbMode = false, lefty = false, LIFT = 40;
 try { cbMode = localStorage.getItem('bp-cb') === '1'; lefty = localStorage.getItem('bp-lefty') === '1'; const l = +localStorage.getItem('bp-lift'); if ([20, 40, 70].includes(l)) LIFT = l; } catch (e) {}
 document.body.classList.toggle('cb', cbMode);
@@ -729,6 +851,7 @@ const weeklyKey = () => 'bp-weekly-' + isoWeek(today()) + '-' + weeklyMod().id;
 function weeklyResult() { try { const v = localStorage.getItem(weeklyKey()); return v === null ? null : +v; } catch (e) { return null; } }
 function dailyResult() { try { const v = localStorage.getItem(dailyKey()); return v === null ? null : +v; } catch (e) { return null; } }
 let grid, pieces, nextPieces, score, best, combo = 0, diff = 'medium';
+let lastEarned = 0;   // coins from the game that just ended
 let cardShown = false;   // a results card has come up for the current game
 let locked = false;   // true once a game is over (or today's daily is used up): nothing can be placed
 try { const d = localStorage.getItem('bp-diff'); if (DIFF[d]) diff = d; } catch (e) {}
@@ -1124,9 +1247,23 @@ function render() {
   $('lbtop').hidden = diff !== 'daily' && diff !== 'weekly';
   $('lbtop').textContent = (diff === 'weekly' ? 'Weekly' : 'Daily') + ' leaderboard (' + (mode === 'crazy' ? 'Crazy ' : '') + N + '\u00d7' + N + ')';
 }
+// the score ticks up to its new value instead of jumping
+function countTo(el, v) {
+  const quick = typeof v !== 'number' || document.body.classList.contains('rm') || !(el._cur >= 0) || v <= el._cur;
+  cancelAnimationFrame(el._raf);
+  if (quick) { el.textContent = v; el._cur = typeof v === 'number' ? v : -1; return; }
+  const from = el._cur, t0 = performance.now(), dur = Math.min(700, 260 + (v - from) * 3);
+  const step = now => {
+    const k = Math.min(1, (now - t0) / dur);
+    el._cur = Math.round(from + (v - from) * (1 - Math.pow(1 - k, 3)));
+    el.textContent = el._cur;
+    if (k < 1) el._raf = requestAnimationFrame(step); else { el._cur = v; el.textContent = v; }
+  };
+  el._raf = requestAnimationFrame(step);
+}
 function paintScore() {
   const puz = diff === 'puzzle', spr = !!cfg().sprint;
-  $('score').textContent = spr ? gameLines + '/' + cfg().sprint : score;   // puzzles and Sprint count lines
+  countTo($('score'), spr ? gameLines + '/' + cfg().sprint : score);   // puzzles and Sprint count lines
   $('scorelabel').textContent = puz || spr ? 'Lines' : 'Score';
   $('bestlabel').textContent = puz ? 'Solved' : spr ? 'Best time' : 'Best';
   $('best').textContent = puz ? Object.keys(stats.solved).length + '/' + PUZZLES.length : spr ? (sprintBest() ? fmtWatch(sprintBest()) : '-') : Math.max(best, score);
@@ -1393,7 +1530,7 @@ function gameOver(reason) {
   stats.games++; stats.topScore = Math.max(stats.topScore, score);
   let earned = coinsFor(score, gameLines);
   if (diff === 'daily' && dailyResult() === null) earned += 40;   // first Daily of the day
-  addCoins(earned);
+  addCoins(earned); lastEarned = earned;
   const firstDaily = diff === 'daily' && dailyResult() === null;
   if (diff === 'daily') updateStreak();
   saveStats();
@@ -1449,8 +1586,24 @@ function showCard(title, final, newbest, note, kind, extra) {
   $('otitle').textContent = title;
   $('final').textContent = final;
   $('newbest').textContent = newbest;
-  $('gostats').textContent = extra || '';
-  $('gostats').hidden = !extra;
+  $('newbest').classList.toggle('pill', newbest === 'New best!');
+  const full = !!extra && kind !== 'solved' && kind !== 'failed';
+  const bonus = kind === 'weekly' && extraWeekly ? extraWeekly.replace(/^\s*\u00b7\s*/, '') : '';
+  $('gostats').textContent = full ? bonus : (extra || '');
+  $('gostats').hidden = full ? !bonus : !extra;
+  $('gotiles').hidden = !full;
+  if (full) $('gotiles').innerHTML = '<div class="tile"><b>' + gameLines + '</b><small>Lines</small></div><div class="tile"><b>' + (gameCombo >= 2 ? '\u00d7' + gameCombo : '-') + '</b><small>Best combo</small></div><div class="tile"><b>+' + lastEarned + '</b><small>Coins</small></div>';
+  const goals = full ? nextGoals() : [];
+  $('gonext').hidden = !goals.length;
+  $('gonext').innerHTML = '';
+  goals.forEach(g => {
+    const d = document.createElement('div'); d.className = 'goal';
+    const top = document.createElement('div'); top.className = 'gtop';
+    const a = document.createElement('span'); a.textContent = g.title; const v = document.createElement('span'); v.textContent = g.val;
+    top.appendChild(a); top.appendChild(v);
+    const bar = document.createElement('div'); bar.className = 'bar'; const fill = document.createElement('i'); fill.style.width = Math.round(g.r * 100) + '%'; bar.appendChild(fill);
+    d.appendChild(top); d.appendChild(bar); $('gonext').appendChild(d);
+  });
   $('dailynote').textContent = note;
   $('dailynote').hidden = !note;
   const daily = kind === 'daily', weekly = kind === 'weekly', challenge = kind === 'challenge';
@@ -1725,7 +1878,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (hammer
 $('hammerbtn').addEventListener('click', useHammer);
 // ---- shop ----
 const AD_COIN_LIMIT = 5;
-function openShop(focus) { renderShop(); $('shop').classList.add('show'); if (focus) setTimeout(() => { const r = document.querySelector('[data-item="' + focus + '"]'); if (r) r.scrollIntoView({ block: 'center' }); }, 60); }
+let shopTab = 'items';
+function openShop(focus) { if (focus === 'looks') shopTab = 'looks'; else if (focus) shopTab = 'items'; renderShop(); $('shop').classList.add('show'); if (focus) setTimeout(() => { const r = document.querySelector('[data-item="' + focus + '"]'); if (r) r.scrollIntoView({ block: 'center' }); }, 60); }
 function closeShop() { $('shop').classList.remove('show'); }
 function buy(t, qty, cost) {
   if (wallet.coins < cost) return;
@@ -1736,6 +1890,8 @@ function renderShop() {
   $('shopcoins').textContent = wallet.coins;
   const body = $('shopbody');
   body.innerHTML = '';
+  document.querySelectorAll('#shoptabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === shopTab));
+  if (shopTab === 'looks') { renderLooks(body); return; }
   const row = (nm, sub, own) => {
     const d = document.createElement('div'); d.className = 'shoprow';
     const n = document.createElement('div'); n.className = 'nm'; n.innerHTML = '<b></b><small></small>'; n.firstChild.textContent = nm; n.lastChild.textContent = sub;
@@ -1762,6 +1918,41 @@ function renderShop() {
     d.appendChild(bs);
   });
 }
+function setLook(k) {
+  look = k; try { localStorage.setItem('bp-look', k); } catch (e) {}
+  applyLook(); render();
+}
+function renderLooks(body) {
+  const grid = document.createElement('div'); grid.className = 'looks';
+  Object.keys(LOOKS).forEach(k => {
+    const L = LOOKS[k], own = ownedLooks.includes(k), on = k === look;
+    const card = document.createElement('div'); card.className = 'lookcard' + (on ? ' on' : '');
+    const pv = document.createElement('div'); pv.className = 'lookpv'; pv.style.background = L.pv;
+    const g = document.createElement('div'); g.className = 'lookgrid';
+    const cols = L.colors || COLORS;
+    for (let i = 0; i < 8; i++) { const c = document.createElement('i'); c.style.background = cols[i % 4]; if (L.glow) c.style.boxShadow = '0 0 8px ' + cols[i % 4]; g.appendChild(c); }
+    pv.appendChild(g);
+    const info = document.createElement('div'); info.className = 'lookinfo';
+    const t = document.createElement('div'); t.innerHTML = '<b></b><small></small>'; t.firstChild.textContent = L.label; t.lastChild.textContent = L.sub;
+    const b = document.createElement('button'); b.className = 'buybtn' + (on ? '' : ' go');
+    if (on) { b.textContent = 'In use'; b.disabled = true; }
+    else if (own) { b.textContent = 'Use'; b.addEventListener('click', () => { setLook(k); sfx.tick(); renderShop(); }); }
+    else {
+      b.innerHTML = 'Buy <i class="coin"></i> ' + L.price; b.disabled = wallet.coins < L.price;
+      b.addEventListener('click', () => {
+        if (wallet.coins < L.price) return;
+        wallet.coins -= L.price; ownedLooks.push(k); stats.purchases++; saveStats();
+        try { localStorage.setItem('bp-looks', JSON.stringify(ownedLooks.filter(x => x !== 'classic'))); } catch (e) {}
+        saveWallet(); paintCoins(); checkAchievements(); setLook(k); sfx.clear(2, 1); renderShop(); toast(L.label + ' is yours. Enjoy!');
+      });
+    }
+    info.appendChild(t); info.appendChild(b);
+    card.appendChild(pv); card.appendChild(info); grid.appendChild(card);
+  });
+  body.appendChild(grid);
+  const h = document.createElement('p'); h.className = 'hint'; h.textContent = 'Themes only change how the game looks. Every theme plays the same.'; body.appendChild(h);
+}
+document.querySelectorAll('#shoptabs button').forEach(b => b.addEventListener('click', () => { shopTab = b.dataset.tab; renderShop(); }));
 $('coinbtn').addEventListener('click', () => openShop());
 $('shopclose').addEventListener('click', closeShop);
 
@@ -2196,6 +2387,10 @@ function burstParticles(n, colors) {   // a short burst of confetti or sparks ov
   }
 }
 function showPop(gain, lines, perfect, booms) {
+  const word = perfect ? 'Perfect clear!' : booms ? (booms > 1 ? 'Chain reaction!' : 'Boom!') : combo >= 8 ? 'Legendary!' : combo >= 5 ? 'Unstoppable!' : combo >= 4 ? 'Fantastic!' : combo >= 3 ? 'Great!' : combo >= 2 ? 'Combo!' : '';
+  const co = $('callout'); co.textContent = word; co.classList.remove('run');
+  if (word) { void co.offsetWidth; co.classList.add('run'); }
+  if (!rm && (perfect || booms || combo >= 4 || lines >= 3)) { const f = $('flash'); f.classList.remove('run'); void f.offsetWidth; f.classList.add('run'); }
   const el = $('pop');
   el.querySelector('b').textContent = '+' + gain;
   el.querySelector('span').textContent = perfect ? (booms ? 'Boom! Perfect clear!' : 'Perfect clear!') : [booms ? (booms > 1 ? booms + ' bombs!' : 'Boom!') : '', lines > 1 ? lines + ' lines' : '', combo >= 2 ? 'Combo \u00d7' + combo : ''].filter(Boolean).join(' \u00b7 ');
@@ -2226,7 +2421,7 @@ renderSound();
 function applyTheme(t, persist = true) {
   document.documentElement.dataset.theme = t;
   if (persist) try { localStorage.setItem('bp-theme', t); } catch (e) {}
-  document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'light' ? '#f3f4f8' : '#0e1016');
+  applyLook();
 }
 applyTheme(document.documentElement.dataset.theme || 'dark', false);
 
@@ -2310,6 +2505,26 @@ const BADGES = [
   { id: 'rival', name: 'Friendly rivalry', desc: 'Beat a friend’s challenge', reward: 25, test: () => stats.challengeWins >= 1 },
   { id: 'shop', name: 'Shopper', desc: 'Buy something in the shop', reward: 10, test: () => stats.purchases >= 1 },
 ];
+const BADGE_PROG = {
+  l100: () => [stats.lines, 100], l1000: () => [stats.lines, 1000], c5: () => [stats.bestCombo, 5], c8: () => [stats.bestCombo, 8],
+  s1000: () => [stats.topScore, 1000], s3000: () => [stats.topScore, 3000], g25: () => [stats.games, 25], g100: () => [stats.games, 100],
+  st3: () => [stats.bestStreak, 3], st7: () => [stats.bestStreak, 7], p10: () => [Object.keys(stats.solved).length, 10], p20: () => [Object.keys(stats.solved).length, 20],
+  bomb10: () => [stats.booms, 10], bomb50: () => [stats.booms, 50],
+};
+// the closest badge and the closest daily mission, shown on the game over card
+function nextGoals() {
+  const out = []; let best = null;
+  BADGES.forEach(b => {
+    if (ach.includes(b.id) || !BADGE_PROG[b.id]) return;
+    const [c, t] = BADGE_PROG[b.id](), r = Math.min(1, c / t);
+    if (r < 1 && (!best || r > best.r)) best = { b, c, t, r };
+  });
+  if (best) out.push({ title: 'Next badge: ' + best.b.name, val: best.c + ' / ' + best.t, r: best.r });
+  const m = missionsFor('day').filter(x => !x.done).sort((a, b) => b.value / b.target - a.value / a.target)[0];
+  if (m) out.push({ title: 'Daily mission: ' + m.m.text(m.target), val: Math.min(m.value, m.target) + ' / ' + m.target, r: Math.min(1, m.value / m.target) });
+  else out.push({ title: 'All daily missions done', val: '', r: 1 });
+  return out;
+}
 let ach = [];
 try { ach = JSON.parse(localStorage.getItem('bp-ach')) || []; } catch (e) {}
 function checkAchievements() {
@@ -2404,7 +2619,10 @@ function renderSettings() {
     b.addEventListener('click', () => { toggle(); renderSettings(); }); return b;
   };
   const keep = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
-  row('Theme', '', seg([['dark', 'Dark'], ['light', 'Light']], document.documentElement.dataset.theme, applyTheme));
+  if (look === 'classic') row('Theme', '', seg([['dark', 'Dark'], ['light', 'Light']], document.documentElement.dataset.theme, applyTheme));
+  const lookBtn = document.createElement('button'); lookBtn.className = 'ghostbtn'; lookBtn.style.margin = '0'; lookBtn.style.padding = '8px 14px'; lookBtn.textContent = LOOKS[look].label + ' \u00b7 Change';
+  lookBtn.addEventListener('click', () => { $('settings').classList.remove('show'); openShop('looks'); });
+  row('Look', 'Themes are bought in the Shop', lookBtn);
   row('Sound and vibration', '', sw(soundOn, toggleSound));
   row('Voice call-outs', 'Says things when you clear lines', sw(voiceOn, toggleVoice));
   row('Sound volume', '', seg([[1.4, 'Normal'], [2.2, 'Loud'], [3.2, 'Max']], sfxVol, v => { sfxVol = v; keep('bp-sfxvol', v); sfx.clear(2, 1); }));
@@ -2412,6 +2630,7 @@ function renderSettings() {
   row('Colour-blind marks', 'Adds a shape to each colour', sw(cbMode, () => { cbMode = !cbMode; keep('bp-cb', cbMode ? '1' : '0'); document.body.classList.toggle('cb', cbMode); render(); }));
   row('Drag height', 'How far a piece floats above your finger', seg([[20, 'Low'], [40, 'Medium'], [70, 'High']], LIFT, v => { LIFT = v; keep('bp-lift', v); }));
   row('Left-handed layout', 'Moves the buttons to the left', sw(lefty, () => { lefty = !lefty; keep('bp-lefty', lefty ? '1' : '0'); document.body.classList.toggle('lefty', lefty); }));
+  if (look === 'classic') {
   const lab = document.createElement('p'); lab.className = 'sublabel'; lab.textContent = 'Block style'; body.appendChild(lab);
   const wrap = document.createElement('div'); wrap.className = 'skins';
   Object.keys(SKINS).forEach(k => {
@@ -2426,6 +2645,7 @@ function renderSettings() {
     wrap.appendChild(b);
   });
   body.appendChild(wrap);
+  }
   const hb = document.createElement('button'); hb.className = 'ghostbtn'; hb.textContent = 'How to play';
   hb.addEventListener('click', () => $('help').classList.add('show'));
   body.appendChild(hb);
@@ -2513,6 +2733,15 @@ else if (!nick) openName(true);   // first launch: choose a username (can be ski
   if (pc) showChallengeCard(pc);
 }
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('/sw.js').catch(() => {});
+// ---- splash: a short title screen, once per visit ----
+(function () {
+  const sp = $('splash'); if (!sp) return;
+  let seen = false;
+  try { seen = sessionStorage.getItem('bp-splash') === '1'; sessionStorage.setItem('bp-splash', '1'); } catch (e) {}
+  if (seen || document.body.classList.contains('rm')) { sp.remove(); return; }
+  setTimeout(() => { sp.classList.add('out'); setTimeout(() => sp.remove(), 400); }, 900);
+})();
+applyLook();
 </script>
 </body>
 </html>
