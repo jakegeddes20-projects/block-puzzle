@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e1016">
+<script>try{var t=localStorage.getItem("bp-theme");if(t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";document.documentElement.dataset.theme=t;}catch(e){}</script>
 <meta name="description" content="Block Puzzle 2: drag pieces onto the board and clear rows and columns. A new daily challenge every day.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Block Puzzle 2</title>
@@ -13,16 +14,37 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0e1016; --bg-glow: #1a2030; --panel: #151822; --raised: #1c2030; --cell: #1b1f2c;
-    --line: rgba(255,255,255,.06); --text: #eef1f8; --muted: #8a92a8; --accent: #ffb938; --accent-ink: #1a1200; --bad: #ff6b81;
+    --bg: #0e1016; --panel: #151822; --raised: #1c2030; --cell: #1b1f2c; --cell-ring: rgba(255,255,255,.025);
+    --line: rgba(255,255,255,.06); --hover: rgba(255,255,255,.04); --text: #eef1f8; --muted: #8a92a8;
+    --accent: #ffb938; --accent-ink: #1a1200; --bad: #ff6b81;
+    --shadow: 0 18px 40px -24px rgba(0,0,0,.8); --card-shadow: 0 30px 60px -20px rgba(0,0,0,.7);
+    --overlay: rgba(8,10,16,.74); --pop-shadow: rgba(0,0,0,.6);
     --font: Outfit, system-ui, -apple-system, "Segoe UI", sans-serif;
     /* board width = 8 cells + 12px padding; the page keeps 16px gutters */
     --size: min(calc((100vw - 44px) / 8), 54px);
     color-scheme: dark;
   }
+  :root[data-theme="light"] {
+    --bg: #f3f4f8; --panel: #ffffff; --raised: #eef0f6; --cell: #e8ebf2; --cell-ring: rgba(20,24,40,.04);
+    --line: rgba(20,24,40,.09); --hover: rgba(20,24,40,.045); --text: #141824; --muted: #646d85;
+    --accent: #ffb02e; --accent-ink: #2a1a00; --bad: #e5484d;
+    --shadow: 0 14px 30px -20px rgba(30,40,80,.35); --card-shadow: 0 28px 50px -22px rgba(30,40,80,.38);
+    --overlay: rgba(238,240,247,.78); --pop-shadow: rgba(255,255,255,.95);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+      --bg: #f3f4f8; --panel: #ffffff; --raised: #eef0f6; --cell: #e8ebf2; --cell-ring: rgba(20,24,40,.04);
+      --line: rgba(20,24,40,.09); --hover: rgba(20,24,40,.045); --text: #141824; --muted: #646d85;
+      --accent: #ffb02e; --accent-ink: #2a1a00; --bad: #e5484d;
+      --shadow: 0 14px 30px -20px rgba(30,40,80,.35); --card-shadow: 0 28px 50px -22px rgba(30,40,80,.38);
+      --overlay: rgba(238,240,247,.78); --pop-shadow: rgba(255,255,255,.95);
+      color-scheme: light;
+    }
+  }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
-  body { min-height: 100vh; min-height: 100dvh; background: radial-gradient(120% 55% at 50% -8%, var(--bg-glow) 0%, var(--bg) 62%) no-repeat, var(--bg); }
+  body { min-height: 100vh; min-height: 100dvh; background: var(--bg); }
   button { font-family: inherit; border: 0; cursor: pointer; }
   button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -38,12 +60,24 @@
   .icon:hover { color: var(--text); background: var(--raised); }
   .icon svg { width: 18px; height: 18px; }
 
-  .seg { width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
-  .seg button { background: transparent; color: var(--muted); border-radius: 12px; padding: 8px 0 7px; display: flex; flex-direction: column; align-items: center; gap: 2px;
-    font-size: 14px; font-weight: 700; line-height: 1.1; transition: background .15s, color .15s; }
-  .seg button small { font-size: 10px; font-weight: 500; opacity: .75; letter-spacing: .02em; }
-  .seg button:hover { color: var(--text); }
-  .seg button.on { background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 14px -6px var(--accent); }
+  .levelpick { position: relative; width: 100%; z-index: 15; }
+  .levelbtn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: 16px;
+    background: var(--panel); color: var(--text); border: 1px solid var(--line); box-shadow: var(--shadow); text-align: left; transition: background .15s; }
+  .levelbtn:hover { background: var(--raised); }
+  .lv { display: flex; align-items: center; gap: 10px; }
+  .lv b, .levelmenu b { font-size: 16px; font-weight: 700; }
+  .lv small { color: var(--muted); font-size: 13px; font-weight: 500; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .chev { width: 20px; height: 20px; color: var(--muted); transition: transform .2s; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .levelbtn[aria-expanded="true"] .chev { transform: rotate(180deg); }
+  .levelmenu { position: absolute; top: calc(100% + 8px); left: 0; right: 0; display: grid; gap: 2px; padding: 6px; border-radius: 18px;
+    background: var(--panel); border: 1px solid var(--line); box-shadow: var(--card-shadow); animation: cardin .16s ease-out; }
+  .levelmenu button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; border-radius: 12px; background: transparent; color: var(--text); text-align: left; transition: background .12s; }
+  .levelmenu button:hover { background: var(--hover); }
+  .levelmenu button.on { background: var(--raised); }
+  .levelmenu button span { display: grid; gap: 1px; flex: 1; min-width: 0; }
+  .levelmenu small { color: var(--muted); font-size: 12.5px; font-weight: 500; }
+  .levelmenu .tick { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--accent); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 
   .scorebar { width: 100%; display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; padding: 0 4px; }
   .stat small { display: block; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
@@ -59,12 +93,12 @@
   #boardwrap { position: relative; }
   #board { display: grid; grid-template-columns: repeat(8, var(--size)); grid-template-rows: repeat(8, var(--size));
     background: var(--panel); padding: 6px; border-radius: 22px; touch-action: none;
-    box-shadow: 0 0 0 1px var(--line), 0 18px 40px -24px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.03); }
+    box-shadow: 0 0 0 1px var(--line), var(--shadow); }
   #board.glow { animation: glow .5s ease-out; }
   @keyframes glow { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); } 100% { box-shadow: 0 0 0 14px transparent; } }
   .cell { padding: 2px; }
   .cell i, .pc i { display: block; width: 100%; height: 100%; border-radius: 28%; }
-  .cell i { background: var(--cell); box-shadow: inset 0 0 0 1px rgba(255,255,255,.025); }
+  .cell i { background: var(--cell); box-shadow: inset 0 0 0 1px var(--cell-ring); }
   .cell.on i, .pc i, .cell.fx-burst i {
     background: linear-gradient(155deg, color-mix(in srgb, var(--c) 72%, #fff) 0%, var(--c) 52%, color-mix(in srgb, var(--c) 80%, #000) 100%);
     box-shadow: inset 0 1px 0 rgba(255,255,255,.4), inset 0 -2px 0 rgba(0,0,0,.16), 0 3px 8px -3px color-mix(in srgb, var(--c) 55%, transparent); }
@@ -75,16 +109,16 @@
   @keyframes burst { 0% { transform: scale(1); opacity: 1; filter: brightness(2.2); } 35% { transform: scale(1.14); opacity: 1; filter: brightness(2.6); } 100% { transform: scale(.15); opacity: 0; filter: brightness(2); } }
 
   #pop { position: absolute; left: 50%; top: 34%; transform: translate(-50%, 0); pointer-events: none; text-align: center; opacity: 0; line-height: 1.15; }
-  #pop b { display: block; font-size: 40px; font-weight: 800; color: var(--accent); text-shadow: 0 2px 18px rgba(0,0,0,.6); }
-  #pop span { display: block; font-size: 15px; font-weight: 700; color: var(--text); text-shadow: 0 2px 10px rgba(0,0,0,.7); }
+  #pop b { display: block; font-size: 40px; font-weight: 800; color: var(--accent); text-shadow: 0 2px 18px var(--pop-shadow); }
+  #pop span { display: block; font-size: 15px; font-weight: 700; color: var(--text); text-shadow: 0 2px 10px var(--pop-shadow); }
   #pop.run { animation: floatup .95s ease-out both; }
   @keyframes floatup { 0% { opacity: 0; transform: translate(-50%, 14px) scale(.8); } 18% { opacity: 1; transform: translate(-50%, 0) scale(1.08); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -34px) scale(1); } }
 
   #tray { width: 100%; display: flex; justify-content: space-around; align-items: center; height: calc(var(--size) * 2.95);
     background: var(--panel); border: 1px solid var(--line); border-radius: 20px; }
   .slot { width: 31%; display: flex; justify-content: center; align-items: center; height: 88%; cursor: grab; border-radius: 14px; touch-action: none; transition: background .15s; }
-  .slot:hover { background: rgba(255,255,255,.03); }
-  .slot.sel { background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 2px var(--accent); }
+  .slot:hover { background: var(--hover); }
+  .slot.sel { background: var(--hover); box-shadow: inset 0 0 0 2px var(--accent); }
   .piece { display: grid; gap: 0; }
   .piece .pc { width: calc(var(--size) * .55); height: calc(var(--size) * .55); padding: 1.5px; }
   .piece .pc.e i { background: none; box-shadow: none; }
@@ -105,11 +139,11 @@
 
   /* overlays */
   #over, #ad, #lbo, #nameo, #help { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 16px; z-index: 20;
-    background: rgba(8,10,16,.7); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+    background: var(--overlay); }
   #over.show, #ad.show, #lbo.show, #nameo.show, #help.show { display: flex; }
   #ad { z-index: 30; } #nameo { z-index: 40; } #help { z-index: 35; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 24px; padding: 26px 24px; text-align: center; width: min(100%, 380px); max-height: 100%; overflow-y: auto;
-    box-shadow: 0 30px 60px -20px rgba(0,0,0,.7); animation: cardin .22s ease-out; }
+    box-shadow: var(--card-shadow); animation: cardin .22s ease-out; }
   @keyframes cardin { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
   .card h2 { margin: 0 0 6px; font-size: 24px; font-weight: 800; }
   .card p { color: var(--muted); margin: 6px 0; line-height: 1.45; font-size: 15px; }
@@ -144,11 +178,12 @@
   <div class="topbar">
     <h1><svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="12" height="12" rx="4" fill="#ff6b81"/><rect x="17" y="3" width="12" height="12" rx="4" fill="#ffb938"/><rect x="3" y="17" width="12" height="12" rx="4" fill="#4cc3ff"/><rect x="17" y="17" width="12" height="12" rx="4" fill="#3fd9a0"/></svg>Block Puzzle 2</h1>
     <div class="tools">
+      <button id="themebtn" class="icon" aria-label="Switch theme"></button>
       <button id="soundbtn" class="icon" aria-label="Sound" aria-pressed="true"></button>
       <button id="helpbtn" class="icon" aria-label="How to play">?</button>
     </div>
   </div>
-  <div id="diff" class="seg"></div>
+  <div id="diff" class="levelpick"></div>
   <div class="scorebar">
     <div class="stat"><small>Score</small><b id="score">0</b></div>
     <div id="combo" class="stat combo" style="visibility:hidden"><small>Combo</small><b id="combon">×0</b></div>
@@ -528,17 +563,41 @@ const SUBS = {
   easy: () => '3 ahead', medium: () => '1 ahead', hard: () => 'blind',
   daily: () => new Date(today() + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }),
 };
+const DESCS = {
+  easy: 'See all 3 of your next pieces', medium: 'See 1 of your next pieces',
+  hard: 'No preview, you play blind', daily: 'Same pieces for everyone, one go a day',
+};
+const DOTS = { easy: '#3fd9a0', medium: '#ffb938', hard: '#ff6b81', daily: '#4cc3ff' };
+const CHEV = '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+const TICK = '<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+let menuOpen = false;
 function renderDiff() {
   const el = $('diff');
   el.innerHTML = '';
+  const t = document.createElement('button');
+  t.className = 'levelbtn';
+  t.setAttribute('aria-haspopup', 'true');
+  t.setAttribute('aria-expanded', String(menuOpen));
+  t.innerHTML = '<span class="lv"><i class="dot" style="background:' + DOTS[diff] + '"></i><b>' + DIFF[diff].label + '</b><small>' + SUBS[diff]() + '</small></span>' + CHEV;
+  t.addEventListener('click', e => { e.stopPropagation(); menuOpen = !menuOpen; renderDiff(); });
+  el.appendChild(t);
+  if (!menuOpen) return;
+  const m = document.createElement('div');
+  m.className = 'levelmenu';
+  m.setAttribute('role', 'menu');
   for (const k in DIFF) {
     const b = document.createElement('button');
-    b.innerHTML = DIFF[k].label + '<small>' + SUBS[k]() + '</small>';
-    b.className = k === diff ? 'on' : '';
-    b.addEventListener('click', () => setDiff(k));
-    el.appendChild(b);
+    b.setAttribute('role', 'menuitem');
+    if (k === diff) b.className = 'on';
+    b.innerHTML = '<i class="dot" style="background:' + DOTS[k] + '"></i><span><b>' + DIFF[k].label + '</b><small>' + DESCS[k] + '</small></span>' + (k === diff ? TICK : '');
+    b.addEventListener('click', e => { e.stopPropagation(); menuOpen = false; setDiff(k); renderDiff(); });
+    m.appendChild(b);
   }
+  el.appendChild(m);
 }
+function closeMenu() { if (menuOpen) { menuOpen = false; renderDiff(); } }
+document.addEventListener('click', e => { if (menuOpen && !$('diff').contains(e.target)) closeMenu(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
 function setDiff(k) {
   if (k === diff) return;
   clearSel();
@@ -797,6 +856,22 @@ function showPop(gain, lines) {
   el.classList.remove('run'); void el.offsetWidth; el.classList.add('run');
   if (lines > 1 || combo >= 2) { boardEl.classList.remove('glow'); void boardEl.offsetWidth; boardEl.classList.add('glow'); }
 }
+
+const ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+const ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+function renderTheme() {
+  const light = document.documentElement.dataset.theme === 'light';
+  $('themebtn').innerHTML = light ? ICON_MOON : ICON_SUN;   // the icon shows what a tap switches to
+  $('themebtn').setAttribute('aria-label', light ? 'Switch to dark theme' : 'Switch to light theme');
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', light ? '#f3f4f8' : '#0e1016');
+}
+$('themebtn').addEventListener('click', () => {
+  const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem('bp-theme', next); } catch (e) {}
+  renderTheme();
+});
+renderTheme();
 
 const ICON_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
 const ICON_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m16 9 5 6"/><path d="m21 9-5 6"/></svg>';
