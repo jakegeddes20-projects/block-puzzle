@@ -25,12 +25,13 @@
     --font: Outfit, system-ui, -apple-system, "Segoe UI", sans-serif;
     /* board width = 8 cells + 12px padding; the page keeps 16px gutters */
     --n: 8;   /* board size, set from script */
-    --size: min(calc((100vw - 44px) / var(--n)), calc(416px / var(--n)), var(--hmax, 999px));   /* --hmax is set from script so everything fits the screen height */
+    --appw: 428px; --cap: 416px; --basecap: 52px;   /* content width, board cap, tray piece cap: larger on tablets */
+    --size: min(calc((100vw - 44px) / var(--n)), calc(var(--cap) / var(--n)), var(--hmax, 999px));   /* --hmax is set from script so everything fits the screen height */
     /* tray and preview pieces keep one size whatever the board size */
     --fit: 1;   /* shrinks the tray and preview on short screens */
-    --base: calc(min(calc((100vw - 44px) / 8), 52px) * var(--fit)); --pcell: calc(var(--base) * .55); --mcell: calc(var(--base) * .27);
-    --tw: calc(min(100vw - 32px, 428px) * .29);
-    --nw: calc(((min(100vw - 32px, 428px) - 8px) * .5 - 44px) / 3);   /* usable width of one slot in the Next panel */   /* usable width of one tray slot */
+    --base: calc(min(calc((100vw - 44px) / 8), var(--basecap)) * var(--fit)); --pcell: calc(var(--base) * .55); --mcell: calc(var(--base) * .27);
+    --tw: calc(min(100vw - 32px, var(--appw)) * .29);
+    --nw: calc(((min(100vw - 32px, var(--appw)) - 8px) * .5 - 44px) / 3);   /* usable width of one slot in the Next panel */   /* usable width of one tray slot */
     color-scheme: dark;
   }
   :root[data-theme="light"] {
@@ -57,7 +58,7 @@
   button { font-family: inherit; border: 0; cursor: pointer; }
   button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  #app { max-width: 460px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  #app { max-width: calc(var(--appw) + 32px); margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 10px;
     padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(14px, env(safe-area-inset-bottom));
     padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
 
@@ -328,7 +329,18 @@
   .badge .rw { color: var(--accent-text); font-weight: 800; font-size: 11.5px; margin-top: 4px; }
   .levelmenu { max-height: calc(100dvh - 170px); overflow-y: auto; }
   .lvhead { padding: 10px 12px 4px; color: var(--muted); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
+  @media (min-width: 700px) { :root { --appw: 564px; --cap: 520px; --basecap: 62px; } }
+  #coach { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); width: calc(100% - 20px); display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px;
+    background: var(--panel); border: 1.5px solid var(--accent); box-shadow: var(--card-shadow); z-index: 6; font-size: 14px; font-weight: 600; line-height: 1.35; }
+  #coach[hidden] { display: none; }
+  #coach span { flex: 1; }
+  #coach .mini { margin: 0; padding: 6px 10px; border-radius: 9px; font-size: 12px; font-weight: 700; background: var(--raised); color: var(--text); border: 0; cursor: pointer; flex: none; }
+  .spark { position: absolute; left: 50%; top: 45%; width: 8px; height: 8px; border-radius: 2px; background: var(--c); pointer-events: none; z-index: 5; animation: sparkfly .85s ease-out forwards; }
+  @keyframes sparkfly { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(260deg); opacity: 0; } }
+  #boardwrap.shake { animation: shake .38s ease-out; }
+  @keyframes shake { 0%, 100% { transform: none; } 15% { transform: translate(-5px, 2px); } 35% { transform: translate(5px, -3px); } 55% { transform: translate(-3px, 3px); } 75% { transform: translate(3px, -1px); } }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important; } }
+  body.rm *, body.rm *::before, body.rm *::after { animation-duration: .001ms !important; animation-delay: 0s !important; transition-duration: .001ms !important; }
 </style>
 </head>
 <body>
@@ -354,6 +366,7 @@
     <div class="stat right"><small id="bestlabel">Best</small><b id="best">0</b></div>
   </div>
   <div id="boardwrap"><div id="board"></div><div id="pop"><b></b><span></span></div>
+    <div id="coach" hidden><span id="coachtext"></span><button id="coachskip" class="mini">Skip</button></div>
     <div id="modebar" hidden><span id="modetext"></span><button id="modrow" class="mini">Row</button><button id="modcol" class="mini">Column</button><button id="modcancel" class="mini ghost">Cancel</button></div></div>
   <div id="tray"></div>
   <div class="bottomrow" id="bottomrow">
@@ -440,6 +453,7 @@
     <li><b>Clear.</b> Fill a whole row or column to clear it.</li>
     <li><b>Combo.</b> Clear lines on back-to-back turns for bonus points.</li>
     <li><b>Daily.</b> Everyone gets the same pieces. One go a day, and an ad earns another (up to 3 extra). Play on consecutive days for a streak.</li>
+    <li><b>Keys.</b> On a computer: U undo, H hint, R remove, P power-ups, Esc cancels.</li>
     <li><b>Bombs.</b> In Crazy, some pieces hide a bomb. It shows once the piece is placed, and when its row or column clears it blows up the blocks around it. Bigger boards get bigger blasts.</li>
     <li><b>Remove.</b> In Crazy you can also remove one block: tap Remove, then tap any block on the board. One free per game, then an ad earns another.</li>
     <li><b>Help.</b> Undo takes back your last move and Hint shows a good spot. Each has one free use per game, then an ad earns another. The Daily has none of these.</li>
@@ -1029,6 +1043,7 @@ function place(idx, r, c) {
   if (pieces.every(x => !x)) dealPieces();
   render();
   feedback(lines, gain, perfect, booms);
+  tutAfterMove(lines);
   if (cfg().zen && score > best) { best = score; try { localStorage.setItem('bp-best-' + SZ() + diff, best); } catch (e) {} }
   if (!pieces.some(x => x && canPlaceAnywhere(x.shape))) { if (cfg().zen) { zenRescue(); saveGame(); } else gameOver(); }
   else saveGame();
@@ -1286,6 +1301,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu();
 function applySize() { fx = []; document.documentElement.style.setProperty('--n', N); }
 function setDiff(k) {
   if (k === diff) return;
+  if (tutStep >= 0) tutEnd();
   clearSel();
   hint = null;
   const f = forcedFor(k);
@@ -2133,11 +2149,30 @@ function feedback(lines, gain, perfect, booms) {
   else { sfx.place(); buzz(8); }
 }
 // floating "+points" over the board, with a glow when a clear is big
+let rm = false;   // reduce motion
+try { const v = localStorage.getItem('bp-rm'); rm = v === null ? !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) : v === '1'; } catch (e) {}
+document.body.classList.toggle('rm', rm);
+function burstParticles(n, colors) {   // a short burst of confetti or sparks over the board
+  if (rm) return;
+  const wrap = $('boardwrap');
+  for (let i = 0; i < n; i++) {
+    const p = document.createElement('i'), a = Math.random() * Math.PI * 2, d = 50 + Math.random() * 110;
+    p.className = 'spark';
+    p.style.setProperty('--dx', Math.cos(a) * d + 'px'); p.style.setProperty('--dy', Math.sin(a) * d - 20 + 'px');
+    p.style.setProperty('--c', skinColor(colors[Math.floor(Math.random() * colors.length)]));
+    wrap.appendChild(p);
+    setTimeout(() => p.remove(), 900);
+  }
+}
 function showPop(gain, lines, perfect, booms) {
   const el = $('pop');
   el.querySelector('b').textContent = '+' + gain;
   el.querySelector('span').textContent = perfect ? (booms ? 'Boom! Perfect clear!' : 'Perfect clear!') : [booms ? (booms > 1 ? booms + ' bombs!' : 'Boom!') : '', lines > 1 ? lines + ' lines' : '', combo >= 2 ? 'Combo \u00d7' + combo : ''].filter(Boolean).join(' \u00b7 ');
   el.classList.remove('run'); void el.offsetWidth; el.classList.add('run');
+  if (perfect) burstParticles(30, COLORS);
+  else if (booms) burstParticles(18, ['#ff8f4d', '#ffb938', '#ff6b81']);
+  else if (combo >= 4 || lines >= 3) burstParticles(14, COLORS);
+  if (!rm && (booms || perfect)) { const w = $('boardwrap'); w.classList.remove('shake'); void w.offsetWidth; w.classList.add('shake'); }
   if (perfect || booms || lines > 1 || combo >= 2) { boardEl.classList.remove('glow'); void boardEl.offsetWidth; boardEl.classList.add('glow'); }
 }
 
@@ -2342,6 +2377,7 @@ function renderSettings() {
   row('Sound and vibration', '', sw(soundOn, toggleSound));
   row('Voice call-outs', 'Says things when you clear lines', sw(voiceOn, toggleVoice));
   row('Sound volume', '', seg([[1.4, 'Normal'], [2.2, 'Loud'], [3.2, 'Max']], sfxVol, v => { sfxVol = v; keep('bp-sfxvol', v); sfx.clear(2, 1); }));
+  row('Reduce motion', 'Calmer effects, no shaking', sw(rm, () => { rm = !rm; keep('bp-rm', rm ? '1' : '0'); document.body.classList.toggle('rm', rm); }));
   row('Colour-blind marks', 'Adds a shape to each colour', sw(cbMode, () => { cbMode = !cbMode; keep('bp-cb', cbMode ? '1' : '0'); document.body.classList.toggle('cb', cbMode); render(); }));
   row('Drag height', 'How far a piece floats above your finger', seg([[20, 'Low'], [40, 'Medium'], [70, 'High']], LIFT, v => { LIFT = v; keep('bp-lift', v); }));
   row('Left-handed layout', 'Moves the buttons to the left', sw(lefty, () => { lefty = !lefty; keep('bp-lefty', lefty ? '1' : '0'); document.body.classList.toggle('lefty', lefty); }));
@@ -2362,14 +2398,68 @@ function renderSettings() {
   const hb = document.createElement('button'); hb.className = 'ghostbtn'; hb.textContent = 'How to play';
   hb.addEventListener('click', () => $('help').classList.add('show'));
   body.appendChild(hb);
+  const tb = document.createElement('button'); tb.className = 'ghostbtn'; tb.textContent = 'Replay the tutorial';
+  tb.addEventListener('click', () => { $('settings').classList.remove('show'); if (!['easy', 'medium', 'hard'].includes(diff)) setDiff('easy'); reset(); tutBegin(); });
+  body.appendChild(tb);
 }
 $('settingsbtn').addEventListener('click', () => { renderSettings(); $('settings').classList.add('show'); });
 $('settingsclose').addEventListener('click', () => $('settings').classList.remove('show'));
 
+// ---- keyboard shortcuts for desktop: U undo, H hint, R remove, P power-ups, Esc cancels ----
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || (e.target && /^(input|textarea|select)$/i.test(e.target.tagName))) return;
+  if (document.querySelector('#over.show, #ad.show, #lbo.show, #nameo.show, #help.show, #stats.show, #settings.show, #shop.show, #sheet.show, #chal.show')) return;
+  const k = e.key.toLowerCase();
+  if (k === 'u') undo();
+  else if (k === 'h') showHint();
+  else if (k === 'r') useHammer();
+  else if (k === 'p' && !noTools()) openSheet();
+});
+
+// ---- a guided first game: highlights a move and explains one idea at a time ----
+let tutStep = -1, tutMoves = 0, tutTimer = null;
+const TUT_TEXT = ['Drag a piece onto the glowing spot.', 'Fill a whole row or column to clear it.', 'Nice! Clear lines on back-to-back turns for combos and bonus points.'];
+function tutBegin() {
+  if (!['easy', 'medium', 'hard'].includes(diff)) return;
+  tutStep = 0; tutMoves = 0; coachUpdate();
+}
+function coachUpdate() {
+  if (tutStep < 0) { $('coach').hidden = true; return; }
+  $('coachtext').textContent = TUT_TEXT[Math.min(tutStep, 2)];
+  $('coach').hidden = false;
+  if (tutStep < 2 && !locked) {   // glow the best spot, without using up a hint
+    const m = bestMove();
+    if (m) {
+      const p = pieces[m.idx], cells = new Set();
+      p.shape.forEach((row, i) => row.forEach((v, j) => v && cells.add((m.r + i) * N + m.c + j)));
+      hint = { idx: m.idx, r: m.r, c: m.c, cells, color: p.color };
+      renderBoard(); renderTray();
+    }
+  }
+}
+function tutAfterMove(lines) {
+  if (tutStep < 0) return;
+  tutMoves++;
+  if (tutStep === 0) tutStep = 1;
+  else if (tutStep === 1 && lines > 0) tutStep = 2;
+  else if (tutStep === 1 && tutMoves >= 8) { tutEnd(); return; }
+  coachUpdate();
+  if (tutStep === 2) { clearTimeout(tutTimer); tutTimer = setTimeout(tutEnd, 3800); }
+}
+function tutEnd() {
+  tutStep = -1; hint = null; clearTimeout(tutTimer);
+  try { localStorage.setItem('bp-tut', '1'); } catch (e) {}
+  $('coach').hidden = true;
+  render();
+}
+$('coachskip').addEventListener('click', tutEnd);
+
 // ---- how to play (shown on first launch) ----
 function closeHelp() {
   $('help').classList.remove('show');
-  try { localStorage.setItem('bp-help', '1'); } catch (e) {}
+  let first = false;
+  try { first = !localStorage.getItem('bp-help'); localStorage.setItem('bp-help', '1'); } catch (e) {}
+  if (first) tutBegin();   // new players get the guided first game
   if (!nick) openName(true);
 }
 $('helpclose').addEventListener('click', closeHelp);
