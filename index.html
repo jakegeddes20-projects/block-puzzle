@@ -26,11 +26,11 @@
     /* board width = 8 cells + 12px padding; the page keeps 16px gutters */
     --n: 8;   /* board size, set from script */
     --appw: 428px; --cap: 416px; --basecap: 52px;   /* content width, board cap, tray piece cap: larger on tablets */
-    --size: min(calc((100vw - 44px) / var(--n)), calc(var(--cap) / var(--n)), var(--hmax, 999px));   /* --hmax is set from script so everything fits the screen height */
+    --size: min(calc((100vw - 32px) / var(--n)), calc(var(--cap) / var(--n)), var(--hmax, 999px));   /* --hmax is set from script so everything fits the screen height */
     /* tray and preview pieces keep one size whatever the board size */
     --fit: 1;   /* shrinks the tray and preview on short screens */
-    --base: calc(min(calc((100vw - 44px) / 8), var(--basecap)) * var(--fit)); --pcell: calc(var(--base) * .55); --mcell: calc(var(--base) * .27);
-    --tw: calc(min(100vw - 32px, var(--appw)) * .29);
+    --base: calc(min(calc((100vw - 32px) / 8), var(--basecap)) * var(--fit)); --pcell: calc(var(--base) * .55); --mcell: calc(var(--base) * .27);
+    --tw: calc(min(100vw - 20px, var(--appw)) * .29);
     --nw: calc(((min(100vw - 32px, var(--appw)) - 8px) * .5 - 44px) / 3);   /* usable width of one slot in the Next panel */   /* usable width of one tray slot */
     color-scheme: dark;
   }
@@ -60,7 +60,7 @@
 
   #app { max-width: calc(var(--appw) + 32px); margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 10px;
     padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(14px, env(safe-area-inset-bottom));
-    padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+    padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
 
   .topbar { width: 100%; display: flex; justify-content: space-between; align-items: center; }
   h1 { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 700; letter-spacing: .01em; }
@@ -137,7 +137,7 @@
   #pop.run { animation: floatup .95s ease-out both; }
   @keyframes floatup { 0% { opacity: 0; transform: translate(-50%, 14px) scale(.8); } 18% { opacity: 1; transform: translate(-50%, 0) scale(1.08); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -34px) scale(1); } }
 
-  #tray { width: 100%; display: flex; justify-content: space-around; align-items: center; height: calc(var(--pcell) * 3.9);
+  #tray { width: 100%; display: flex; justify-content: space-around; align-items: center; height: calc(var(--pcell) * 3.2);
     background: var(--panel); border: 1px solid var(--line); border-radius: 20px; }
   .slot { width: 31%; display: flex; justify-content: center; align-items: center; height: 88%; cursor: grab; border-radius: 14px; touch-action: none; transition: background .15s; }
   .slot:hover { background: var(--hover); }
@@ -349,7 +349,7 @@
   .badge .rw { color: var(--accent-text); font-weight: 800; font-size: 11.5px; margin-top: 4px; }
   .levelmenu { max-height: calc(100dvh - 170px); overflow-y: auto; }
   .lvhead { padding: 10px 12px 4px; color: var(--muted); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
-  @media (min-width: 700px) { :root { --appw: 564px; --cap: 520px; --basecap: 62px; } }
+  @media (min-width: 700px) { :root { --appw: 660px; --cap: 620px; --basecap: 70px; } }
   #coach { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); width: calc(100% - 20px); display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px;
     background: var(--panel); border: 1.5px solid var(--accent); box-shadow: var(--card-shadow); z-index: 6; font-size: 14px; font-weight: 600; line-height: 1.35; }
   #coach[hidden] { display: none; }
@@ -999,7 +999,7 @@ function renderTray() {
     if (p) {
       const pe = pieceHTML(p, 'piece');
       // shrink wide or tall pieces so they stay inside their slot
-      pe.style.setProperty('--pc', 'min(var(--pcell), calc(var(--tw) / ' + p.shape[0].length + '), calc(var(--pcell) * 3.3 / ' + p.shape.length + '))');
+      pe.style.setProperty('--pc', 'min(var(--pcell), calc(var(--tw) / ' + p.shape[0].length + '), calc(var(--pcell) * 2.75 / ' + p.shape.length + '))');
       slot.appendChild(pe);
       if (hint && hint.idx === idx) slot.classList.add('hint');
       slot.addEventListener('pointerdown', e => startDrag(e, idx));
