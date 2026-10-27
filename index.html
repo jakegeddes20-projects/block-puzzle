@@ -365,13 +365,16 @@ function blob(S) {
   return WILD[Math.floor(rand() * WILD.length)];
 }
 
+// Small fillers, about 1 piece in 8: a single block, a pair, a bent corner or a short bar. They give a cramped board an escape.
+const SMALL = [[[1]], [[1]], [[1, 1]], [[1, 1]], [[1, 1], [1, 0]], [[1, 1], [1, 0]], [[1, 1, 1]]];
 function crazyShape() {
   const S = crazyBox(), cap = crazyCap(S), r = rand();
-  if (r < 0.5) {                                                      // the odd ones out, turned at random
+  if (r < 0.125) return orient(SMALL[Math.floor(rand() * SMALL.length)]);
+  if (r < 0.55) {                                                     // the odd ones out, turned at random
     const fit = WILD.filter(sh => Math.max(sh.length, sh[0].length) <= S + 1 && cellsOf(sh) <= cap);
     if (fit.length) return orient(fit[Math.floor(rand() * fit.length)]);
   }
-  if (r > 0.95) {                                                     // very occasionally a plain classic piece
+  if (r > 0.97) {                                                     // very occasionally a plain classic piece
     const familiar = SHAPES.filter(sh => Math.max(sh.length, sh[0].length) <= S);
     return familiar[Math.floor(rand() * familiar.length)];
   }
