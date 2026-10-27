@@ -1,5 +1,5 @@
 // POST { id, score } -> records today's best score for a player who has claimed a name
-const { redis, ID_RE, MAX_SCORE, SIZES, MODES, BOARDS, boardOf, boardKey, weekId, sizeOf, modeOf, dayKey, send, guard } = require('./_lib');
+const { redis, ID_RE, MAX_SCORE, MAX_SCORE_BY_SIZE, limited, SIZES, MODES, BOARDS, boardOf, boardKey, weekId, sizeOf, modeOf, dayKey, send, guard } = require('./_lib');
 
 module.exports = async (req, res) => {
   if (!guard(req, res)) return;
@@ -13,6 +13,8 @@ module.exports = async (req, res) => {
     if (!BOARDS.includes(board)) return send(res, 400, { error: 'bad_board' });
     if (typeof id !== 'string' || !ID_RE.test(id)) return send(res, 400, { error: 'bad_id' });
     if (!Number.isInteger(score) || score < 0 || score > MAX_SCORE) return send(res, 400, { error: 'bad_score' });
+    if (score > MAX_SCORE_BY_SIZE[size]) return send(res, 400, { error: 'bad_score' });
+    if (await limited('rl:score:' + id, 60, 3600)) return send(res, 429, { error: 'slow_down' });
     if (!(await redis.hget('players', id))) return send(res, 403, { error: 'no_name' });
 
     const key = boardKey(board, size, mode);

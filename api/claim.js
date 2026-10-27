@@ -1,11 +1,12 @@
 // POST { id, name } -> reserves a username for this player id (case-insensitive, first come first served)
-const { redis, ID_RE, NAME_RE, badName, send, guard } = require('./_lib');
+const { redis, ID_RE, NAME_RE, badName, send, guard, limited, ipKey } = require('./_lib');
 
 module.exports = async (req, res) => {
   if (!guard(req, res)) return;
   try {
     const { id, name } = req.body || {};
     if (typeof id !== 'string' || !ID_RE.test(id)) return send(res, 400, { error: 'bad_id' });
+    if (await limited('rl:claim:' + id, 12, 3600) || await limited('rl:claimip:' + ipKey(req), 40, 3600)) return send(res, 429, { error: 'slow_down' });
     const clean = typeof name === 'string' ? name.trim().replace(/\s+/g, ' ') : '';
     if (!NAME_RE.test(clean) || badName(clean)) return send(res, 400, { error: 'bad_name' });
 

@@ -267,6 +267,11 @@
   .sw i { width: 12px; height: 12px; border-radius: 4px; display: block; }
   #settings .card > button, #settingsbody > .ghostbtn { display: block; margin-left: auto; margin-right: auto; }
   #settingsbody > .ghostbtn { margin-top: 14px; }
+  #lbl .flag { margin: 0; padding: 4px 6px; border-radius: 8px; background: transparent; color: var(--muted); border: 0; font-size: 11px; font-weight: 700; cursor: pointer; flex: none; opacity: .55; }
+  #lbl .flag svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
+  #lbl .flag:hover, #lbl .flag.armed { opacity: 1; color: var(--bad); }
+  .legal { margin: 14px 0 0; color: var(--muted); font-size: 12.5px; text-align: center; }
+  .legal a { color: var(--accent-text); }
   .sublabel { margin: 14px 0 0; color: var(--muted); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
 
   body.lefty .topbar { flex-direction: row-reverse; }
@@ -1897,10 +1902,28 @@ function renderLb() {
       const s = document.createElement('span');
       s.className = cls; s.textContent = text; li.appendChild(s);
     }
+    if (!r.me) {   // other players' names can be reported
+      const f = document.createElement('button');
+      f.className = 'flag'; f.setAttribute('aria-label', 'Report the name ' + r.name);
+      f.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>';
+      f.addEventListener('click', () => reportName(r.name, f));
+      li.appendChild(f);
+    }
     ol.appendChild(li);
   };
   lbRows.forEach(row);
   if (lbYou && !lbRows.some(r => r.me)) row({ rank: lbYou.rank, name: nick || 'You', score: lbYou.score, me: true });
+}
+async function reportName(name, btn) {
+  if (!btn.dataset.armed) {   // first tap asks, second tap sends
+    btn.dataset.armed = '1'; btn.classList.add('armed'); btn.textContent = 'Report?';
+    setTimeout(() => { if (!btn.dataset.sent) { delete btn.dataset.armed; btn.classList.remove('armed'); btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>'; } }, 3500);
+    return;
+  }
+  if (btn.dataset.sent) return;
+  btn.dataset.sent = '1'; btn.textContent = 'Reported';
+  try { await api('/api/report', { id: playerId(), name }); toast('Thanks, we will take a look.'); }
+  catch (e) { toast(e.code === 'slow_down' ? 'You have reported a lot today. Try again tomorrow.' : 'Could not send the report right now.'); }
 }
 async function openLb(board) {
   lbBoard = board === 'weekly' || board === 'daily' ? board : (diff === 'weekly' ? 'weekly' : 'daily');
@@ -2401,6 +2424,9 @@ function renderSettings() {
   const tb = document.createElement('button'); tb.className = 'ghostbtn'; tb.textContent = 'Replay the tutorial';
   tb.addEventListener('click', () => { $('settings').classList.remove('show'); if (!['easy', 'medium', 'hard'].includes(diff)) setDiff('easy'); reset(); tutBegin(); });
   body.appendChild(tb);
+  const lg = document.createElement('p'); lg.className = 'legal';
+  lg.innerHTML = '<a href="/privacy.html" target="_blank" rel="noopener">Privacy policy</a> \u00b7 <a href="/terms.html" target="_blank" rel="noopener">Terms of use</a>';
+  body.appendChild(lg);
 }
 $('settingsbtn').addEventListener('click', () => { renderSettings(); $('settings').classList.add('show'); });
 $('settingsclose').addEventListener('click', () => $('settings').classList.remove('show'));

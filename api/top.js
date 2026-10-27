@@ -1,5 +1,5 @@
 // POST { id? } -> today's top 10 (names and scores only, never ids) plus the caller's own rank
-const { redis, today, ID_RE, SIZES, MODES, BOARDS, boardOf, boardKey, weekId, sizeOf, modeOf, dayKey, send, guard } = require('./_lib');
+const { redis, today, ID_RE, SIZES, MODES, BOARDS, boardOf, boardKey, weekId, sizeOf, modeOf, dayKey, send, guard, limited, ipKey } = require('./_lib');
 
 module.exports = async (req, res) => {
   if (!guard(req, res)) return;
@@ -11,10 +11,16 @@ module.exports = async (req, res) => {
     if (!MODES.includes(mode)) return send(res, 400, { error: 'bad_mode' });
     const board = boardOf(req.body);
     if (!BOARDS.includes(board)) return send(res, 400, { error: 'bad_board' });
+    if (await limited('rl:top:' + ipKey(req), 90, 60)) return send(res, 429, { error: 'slow_down' });
     const key = boardKey(board, size, mode);
-    const flat = await redis.zrange(key, 0, 9, { rev: true, withScores: true });   // [member, score, member, score, ...]
+    const flat = await redis.zrange(key, 0, 29, { rev: true, withScores: true });   // [member, score, member, score, ...]
+    const hidden = new Set((await redis.smembers('hidden')) || []);   // players that several others reported
     const ids = [], scores = [];
-    for (let i = 0; i < flat.length; i += 2) { ids.push(String(flat[i])); scores.push(Number(flat[i + 1])); }
+    for (let i = 0; i < flat.length && ids.length < 10; i += 2) {
+      const pid = String(flat[i]);
+      if (hidden.has(pid) && pid !== id) continue;
+      ids.push(pid); scores.push(Number(flat[i + 1]));
+    }
     const names = ids.length ? (await redis.hmget('players', ...ids)) || {} : {};
     const rows = ids.map((pid, i) => ({ rank: i + 1, name: names[pid] || 'Player', score: scores[i], me: pid === id }));
 
