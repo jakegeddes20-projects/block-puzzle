@@ -1342,7 +1342,7 @@ function loadPuzzle(i) {
 function checkPuzzle() {
   const goal = PUZZLES[puzzleIdx].g, left = pieces.filter(Boolean);
   if (gameLines >= goal) {
-    locked = true; if (!stats.solved[puzzleIdx]) { addCoins(20); track('puzzles', 1); } stats.solved[puzzleIdx] = 1; saveStats(); checkMissions(); checkAchievements(); sfx.perfect();
+    locked = true; if (!stats.solved[puzzleIdx]) { addCoins(20); trackStat('puzzles', 1); } stats.solved[puzzleIdx] = 1; saveStats(); checkMissions(); checkAchievements(); sfx.perfect();
     setTimeout(() => { if (locked && diff === 'puzzle') showCard('Solved!', gameLines + ' / ' + goal + ' lines', '', 'Nice. On to the next one?', 'solved'); }, 600);
     render();
   } else if (!left.length || !left.some(p => canPlaceAnywhere(p.shape))) {
@@ -2267,7 +2267,7 @@ function missionsFor(kind) {
     return { kind, m, target, reward: MISSION_REWARD[kind][tier], value: vals[m.stat] || 0, done: !!done[m.id] };
   });
 }
-function track(stat, n) { rollProg(); prog.d[stat] = (prog.d[stat] || 0) + n; prog.w[stat] = (prog.w[stat] || 0) + n; }
+function trackStat(stat, n) { rollProg(); prog.d[stat] = (prog.d[stat] || 0) + n; prog.w[stat] = (prog.w[stat] || 0) + n; }
 function trackMax(stat, v) { rollProg(); prog.d[stat] = Math.max(prog.d[stat] || 0, v); prog.w[stat] = Math.max(prog.w[stat] || 0, v); }
 function checkMissions() {
   const msgs = [];
@@ -2313,15 +2313,15 @@ function checkAchievements() {
 }
 // call after anything that changes progress
 function trackMove(lines, booms, perfect) {
-  if (lines) { track('lines', lines); trackMax('multi', lines); trackMax('combo', combo); }
-  if (booms) track('booms', booms);
-  if (perfect) track('perfects', 1);
+  if (lines) { trackStat('lines', lines); trackMax('multi', lines); trackMax('combo', combo); }
+  if (booms) trackStat('booms', booms);
+  if (perfect) trackStat('perfects', 1);
   checkMissions(); checkAchievements();
 }
 function trackGameEnd(firstDaily) {
-  track('games', 1);
+  trackStat('games', 1);
   if (cfg().time) trackMax('timedScore', score); else trackMax('score', score);
-  if (firstDaily) track('dailies', 1);
+  if (firstDaily) trackStat('dailies', 1);
   checkMissions(); checkAchievements();
 }
 
