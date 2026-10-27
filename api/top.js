@@ -1,11 +1,13 @@
 // POST { id? } -> today's top 10 (names and scores only, never ids) plus the caller's own rank
-const { redis, today, ID_RE, send, guard } = require('./_lib');
+const { redis, today, ID_RE, SIZES, sizeOf, dayKey, send, guard } = require('./_lib');
 
 module.exports = async (req, res) => {
   if (!guard(req, res)) return;
   try {
     const { id } = req.body || {};
-    const key = 'day:' + today();
+    const size = sizeOf(req.body);
+    if (!SIZES.includes(size)) return send(res, 400, { error: 'bad_size' });
+    const key = dayKey(size);
     const flat = await redis.zrange(key, 0, 9, { rev: true, withScores: true });   // [member, score, member, score, ...]
     const ids = [], scores = [];
     for (let i = 0; i < flat.length; i += 2) { ids.push(String(flat[i])); scores.push(Number(flat[i + 1])); }
