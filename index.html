@@ -1612,7 +1612,55 @@ const sfx = {
 };
 const buzz = pattern => { if (soundOn && navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) {} } };
 
+// ---- voice call-outs (the phone's built-in speech, so no audio files) ----
+const canSpeak = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+let voiceOn = true;
+try { voiceOn = localStorage.getItem('bp-voice') !== '0'; } catch (e) {}
+let voiceChoice = null;
+function pickVoice() {
+  const vs = speechSynthesis.getVoices();
+  return vs.find(v => /^en[-_](GB|US|AU)/i.test(v.lang) && /natural|premium|enhanced|google|samantha|daniel|karen|aaron/i.test(v.name)) || vs.find(v => /^en/i.test(v.lang)) || null;
+}
+if (canSpeak) { voiceChoice = pickVoice(); speechSynthesis.onvoiceschanged = () => { voiceChoice = pickVoice(); }; }
+function say(text) {
+  if (!canSpeak || !voiceOn || !soundOn) return;
+  try {
+    if (speechSynthesis.speaking) speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.08; u.pitch = 1.1; u.volume = 1;
+    if (voiceChoice) { u.voice = voiceChoice; u.lang = voiceChoice.lang; } else u.lang = 'en-GB';
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+const pickOne = list => list[Math.floor(Math.random() * list.length)];
+const CALLOUTS = {
+  1: ['Nice!', 'Good!', 'Clean!', 'Sweet!'],
+  2: ['Double!', 'Great!', 'Nice one!'],
+  3: ['Triple!', 'Awesome!', 'Wow!'],
+  4: ['Incredible!', 'Amazing!', 'Unreal!'],
+};
+// one phrase per move, most special first: perfect clear, bombs, combos, then the number of lines
+function calloutText(lines, perfect, booms) {
+  if (perfect) return 'Perfect clear!';
+  if (booms) return booms > 1 ? 'Chain reaction!' : 'Boom!';
+  if (!lines) return '';
+  if (combo >= 8) return 'Legendary!';
+  if (combo >= 5) return 'Unstoppable!';
+  if (combo >= 2) return 'Combo ' + combo + '!';
+  return pickOne(CALLOUTS[Math.min(lines, 4)]);
+}
+function callout(lines, perfect, booms) {
+  const text = calloutText(lines, perfect, booms);
+  if (text) setTimeout(() => say(text), 140);   // just after the clear sound starts
+}
+function toggleVoice() {
+  voiceOn = !voiceOn;
+  try { localStorage.setItem('bp-voice', voiceOn ? '1' : '0'); } catch (e) {}
+  if (voiceOn) say('Nice!');
+}
+
 function feedback(lines, gain, perfect, booms) {
+  callout(lines, perfect, booms);
   if (booms) { sfx.boom(); buzz([60, 25, 90, 25, 60, 25, 40]); if (perfect) sfx.perfect(); showPop(gain, lines, perfect, booms); }
   else if (perfect) { sfx.perfect(); buzz([20, 40, 20, 40, 30]); showPop(gain, lines, true); }
   else if (lines) { sfx.clear(lines, combo); buzz([14, 40, 20]); showPop(gain, lines); }
@@ -1703,6 +1751,7 @@ function renderSettings() {
   const keep = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
   row('Theme', '', seg([['dark', 'Dark'], ['light', 'Light']], document.documentElement.dataset.theme, applyTheme));
   row('Sound and vibration', '', sw(soundOn, toggleSound));
+  if (canSpeak) row('Voice call-outs', 'Says things when you clear lines', sw(voiceOn, toggleVoice));
   row('Sound volume', '', seg([[1.4, 'Normal'], [2.2, 'Loud'], [3.2, 'Max']], sfxVol, v => { sfxVol = v; keep('bp-sfxvol', v); sfx.clear(2, 1); }));
   row('Colour-blind marks', 'Adds a shape to each colour', sw(cbMode, () => { cbMode = !cbMode; keep('bp-cb', cbMode ? '1' : '0'); document.body.classList.toggle('cb', cbMode); render(); }));
   row('Drag height', 'How far a piece floats above your finger', seg([[20, 'Low'], [40, 'Medium'], [70, 'High']], LIFT, v => { LIFT = v; keep('bp-lift', v); }));
