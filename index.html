@@ -314,7 +314,7 @@
   <div class="tools2">
       <button id="undobtn" class="tool"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span>Undo</span><b>1</b></button>
       <button id="hintbtn" class="tool"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg><span>Hint</span><b>1</b></button>
-      <button id="hammerbtn" class="tool" hidden><svg viewBox="0 0 24 24"><path d="m14 6 4 4"/><path d="M5 19 13 11"/><path d="m12.5 4.5 7 7-2.6 2.6-7-7z"/><path d="M3.5 20.5 7 17"/></svg><span>Hammer</span><b>1</b></button>
+      <button id="hammerbtn" class="tool" aria-label="Remove a block" hidden><svg viewBox="0 0 24 24"><path d="m14 6 4 4"/><path d="M5 19 13 11"/><path d="m12.5 4.5 7 7-2.6 2.6-7-7z"/><path d="M3.5 20.5 7 17"/></svg><span>Remove</span><b>1</b></button>
     </div>
   </div>
   <button id="lbtop" hidden>Daily leaderboard</button>
@@ -372,7 +372,7 @@
     <li><b>Combo.</b> Clear lines on back-to-back turns for bonus points.</li>
     <li><b>Daily.</b> Everyone gets the same pieces. One go a day, and an ad earns another (up to 3 extra). Play on consecutive days for a streak.</li>
     <li><b>Bombs.</b> In Crazy, some pieces hide a bomb. It shows once the piece is placed, and when its row or column clears it blows up the blocks around it. Bigger boards get bigger blasts.</li>
-    <li><b>Hammer.</b> In Crazy there is a hammer too: tap it, then tap any block to smash it. One free per game, then an ad earns another.</li>
+    <li><b>Remove.</b> In Crazy you can also remove one block: tap Remove, then tap any block on the board. One free per game, then an ad earns another.</li>
     <li><b>Help.</b> Undo takes back your last move and Hint shows a good spot. Each has one free use per game, then an ad earns another. The Daily has none of these.</li>
   </ol>
   <p class="small">The game ends when none of your pieces fit. Easy shows your next 3 pieces, Medium shows 1, Hard shows none. Timed gives you 2 minutes. Puzzle sets a goal with a fixed board and pieces.</p>
@@ -969,7 +969,7 @@ function paintCombo() {
   if (combo >= 2 && had !== String(combo)) { cb.classList.remove('pop'); void cb.offsetWidth; cb.classList.add('pop'); }
 }
 function renderTools() {
-  // the Daily is pure skill: no undo, hint or hammer, so the whole row goes and the board gets the room
+  // the Daily is pure skill: no undo, hint or remove, so the whole row goes and the board gets the room
   $('bottomrow').hidden = diff === 'daily' && DIFF.daily.preview === 0;
   const u = $('undobtn'), h = $('hintbtn');
   u.disabled = (locked && diff !== 'puzzle') || !history;
@@ -1233,7 +1233,7 @@ const MAX_ADS = 3;
 const adsKey = () => 'bp-ads-' + SZ() + today();
 function adsUsed() { try { return +localStorage.getItem(adsKey()) || 0; } catch (e) { return 0; } }
 const adsLeft = () => Math.max(0, MAX_ADS - adsUsed());
-const AD_TEXT = { go: 'Your next go starts in', undo: 'Your undo is ready in', hint: 'Your hint is ready in', hammer: 'Your hammer is ready in' };
+const AD_TEXT = { go: 'Your next go starts in', undo: 'Your undo is ready in', hint: 'Your hint is ready in', hammer: 'Your remove is ready in' };
 let adTimer = null, adJob = 'go';
 function startAd(job) {
   job = typeof job === 'string' ? job : 'go';
@@ -1354,7 +1354,7 @@ function showHint() {
 function setHammer(on) {
   if (on && (locked || mode !== 'crazy' || diff === 'puzzle' || diff === 'daily')) return;
   hammerMode = on;
-  if (on) { clearSel(); hint = null; toast('Tap a block to smash it'); }
+  if (on) { clearSel(); hint = null; toast('Tap a block to remove it'); }
   render();
 }
 function useHammer() {
