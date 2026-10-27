@@ -160,10 +160,10 @@
   #lbtop[hidden] { display: none; }
 
   /* overlays */
-  #over, #ad, #lbo, #nameo, #help, #stats, #settings { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 16px; z-index: 20;
+  #over, #ad, #lbo, #nameo, #help, #stats, #settings, #shop, #sheet { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 16px; z-index: 20;
     background: var(--overlay); }
-  #over.show, #ad.show, #lbo.show, #nameo.show, #help.show, #stats.show, #settings.show { display: flex; }
-  #stats, #settings { z-index: 25; }
+  #over.show, #ad.show, #lbo.show, #nameo.show, #help.show, #stats.show, #settings.show, #shop.show, #sheet.show { display: flex; }
+  #stats, #settings, #shop, #sheet { z-index: 25; }
   #ad { z-index: 30; } #nameo { z-index: 40; } #help { z-index: 35; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 24px; padding: 26px 24px; text-align: center; width: min(100%, 380px); max-height: 100%; overflow-y: auto;
     box-shadow: var(--card-shadow); animation: cardin .22s ease-out; }
@@ -283,14 +283,39 @@
   #board.hammering { cursor: crosshair; }
   #board.hammering .cell.on i { animation: hammerpulse .9s ease-in-out infinite; box-shadow: inset 0 0 0 2px var(--accent); }
   @keyframes hammerpulse { 50% { transform: scale(.9); } }
+  .chip { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 12px; background: var(--panel); color: var(--text); border: 1px solid var(--line); font-size: 14px; font-weight: 800; }
+  .chip:hover { background: var(--raised); }
+  .coin { width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff3b0, #ffb938 55%, #c98400); box-shadow: inset 0 0 0 1.5px rgba(120,70,0,.5); display: inline-block; flex: none; }
+  .coin.big { width: 20px; height: 20px; }
+  @media (max-width: 380px) { h1 .name { display: none; } }
+  .balance { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 22px; color: var(--text); margin: 4px 0 12px; }
+  .balance b { font-size: 28px; font-weight: 800; }
+  .shoprow { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+  .shoprow:first-child { border-top: 0; }
+  .shoprow .nm b { font-size: 15px; font-weight: 700; }
+  .shoprow .nm small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+  .shoprow .own { color: var(--accent-text); font-weight: 800; font-size: 13px; text-align: right; }
+  .shoprow .buys { grid-column: 1 / -1; display: flex; gap: 8px; }
+  .card .buybtn { flex: 1; margin: 0; padding: 9px 6px; border-radius: 12px; font-size: 13px; background: var(--raised); color: var(--text); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .card .buybtn:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 18%, var(--raised)); }
+  .card .buybtn:disabled { opacity: .4; cursor: default; }
+  .card .buybtn.go { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  #modebar { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 14px; background: var(--panel);
+    border: 1px solid var(--line); box-shadow: var(--card-shadow); z-index: 6; white-space: nowrap; font-size: 13px; font-weight: 600; }
+  #modebar[hidden] { display: none; }
+  #modebar .mini { margin: 0; padding: 6px 10px; border-radius: 9px; font-size: 13px; font-weight: 700; background: var(--accent); color: var(--accent-ink); border: 0; cursor: pointer; }
+  #modebar .mini.ghost { background: var(--raised); color: var(--text); }
+  #board.lining { cursor: crosshair; }
+  .bottomrow.hasnext .tool { width: 38px; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important; } }
 </style>
 </head>
 <body>
 <div id="app">
   <div class="topbar">
-    <h1><svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="12" height="12" rx="4" fill="#ff6b81"/><rect x="17" y="3" width="12" height="12" rx="4" fill="#ffb938"/><rect x="3" y="17" width="12" height="12" rx="4" fill="#4cc3ff"/><rect x="17" y="17" width="12" height="12" rx="4" fill="#3fd9a0"/></svg>Block Puzzle 2</h1>
+    <h1><svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="12" height="12" rx="4" fill="#ff6b81"/><rect x="17" y="3" width="12" height="12" rx="4" fill="#ffb938"/><rect x="3" y="17" width="12" height="12" rx="4" fill="#4cc3ff"/><rect x="17" y="17" width="12" height="12" rx="4" fill="#3fd9a0"/></svg><span class="name">Block Puzzle 2</span></h1>
     <div class="tools">
+      <button id="coinbtn" class="chip" aria-label="Shop"><i class="coin"></i><b id="coincount">0</b></button>
       <button id="statsbtn" class="icon" aria-label="Stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg></button>
       <button id="soundbtn" class="icon" aria-label="Sound" aria-pressed="true"></button>
       <button id="settingsbtn" class="icon" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h0a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
@@ -307,7 +332,8 @@
     <div id="combo" class="stat combo" style="visibility:hidden"><small id="combolabel">Combo</small><b id="combon">×0</b></div>
     <div class="stat right"><small id="bestlabel">Best</small><b id="best">0</b></div>
   </div>
-  <div id="boardwrap"><div id="board"></div><div id="pop"><b></b><span></span></div></div>
+  <div id="boardwrap"><div id="board"></div><div id="pop"><b></b><span></span></div>
+    <div id="modebar" hidden><span id="modetext"></span><button id="modrow" class="mini">Row</button><button id="modcol" class="mini">Column</button><button id="modcancel" class="mini ghost">Cancel</button></div></div>
   <div id="tray"></div>
   <div class="bottomrow" id="bottomrow">
     <div id="next"></div>
@@ -315,6 +341,7 @@
       <button id="undobtn" class="tool"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span>Undo</span><b>1</b></button>
       <button id="hintbtn" class="tool"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg><span>Hint</span><b>1</b></button>
       <button id="hammerbtn" class="tool" aria-label="Remove a block" hidden><svg viewBox="0 0 24 24"><path d="m14 6 4 4"/><path d="M5 19 13 11"/><path d="m12.5 4.5 7 7-2.6 2.6-7-7z"/><path d="M3.5 20.5 7 17"/></svg><span>Remove</span><b>1</b></button>
+      <button id="toolsbtn" class="tool" aria-label="Power-ups"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg><span>Power-ups</span><b>0</b></button>
     </div>
   </div>
   <button id="lbtop" hidden>Daily leaderboard</button>
@@ -351,6 +378,17 @@
   <input id="nameinput" maxlength="16" placeholder="Your name" autocomplete="off">
   <p id="nameerr"></p>
   <div class="row"><button id="namesave">Save name</button><button id="nameskip" class="ghostbtn">Skip for now</button></div>
+</div></div>
+<div id="shop"><div class="card left">
+  <h2>Shop</h2>
+  <p class="balance"><i class="coin big"></i><b id="shopcoins">0</b> coins</p>
+  <div id="shopbody"></div>
+  <button id="shopclose" class="ghostbtn">Close</button>
+</div></div>
+<div id="sheet"><div class="card left">
+  <h2>Power-ups</h2>
+  <div id="sheetbody"></div>
+  <button id="sheetclose" class="ghostbtn">Close</button>
 </div></div>
 <div id="stats"><div class="card">
   <h2>Your stats</h2>
@@ -393,6 +431,26 @@ const COLORS = ['#ff6b81', '#ffb938', '#3fd9a0', '#4cc3ff', '#a07bff', '#ff8f4d'
 // ---- stats and unlocks ----
 const stats = { games: 0, lines: 0, bestCombo: 0, bestClear: 0, perfects: 0, topScore: 0, streak: 0, bestStreak: 0, lastDaily: '', solved: {}, booms: 0 };
 try { Object.assign(stats, JSON.parse(localStorage.getItem('bp-stats')) || {}); } catch (e) {}
+// ---- coins and tools ----
+const TOOLS = ['undo', 'hint', 'remove', 'shuffle', 'line', 'freeze'];
+const ITEMS = {
+  undo:    { name: 'Undo',       desc: 'Take back your last move',                price: 10, bundle: [5, 40] },
+  hint:    { name: 'Hint',       desc: 'Shows a good spot for a piece',           price: 10, bundle: [5, 40] },
+  remove:  { name: 'Remove',     desc: 'Remove any one block (Crazy)',            price: 15, bundle: [5, 60] },
+  shuffle: { name: 'Shuffle',    desc: 'Swap your three pieces for new ones',     price: 20, bundle: [3, 50] },
+  line:    { name: 'Line Clear', desc: 'Clear a whole row or column',             price: 30, bundle: [3, 75] },
+  freeze:  { name: 'Freeze',     desc: 'Adds 10 seconds to the clock (Timed)',    price: 20, bundle: [3, 50] },
+};
+const wallet = { coins: 0, inv: { undo: 0, hint: 0, remove: 0, shuffle: 1, line: 1, freeze: 1 }, giftDay: '', adDay: '', adN: 0 };   // new players get one of each power-up to try
+try {
+  const w = JSON.parse(localStorage.getItem('bp-wallet'));
+  if (w) { Object.assign(wallet, w); wallet.inv = Object.assign({ undo: 0, hint: 0, remove: 0, shuffle: 0, line: 0, freeze: 0 }, w.inv); }
+} catch (e) {}
+function saveWallet() { try { localStorage.setItem('bp-wallet', JSON.stringify(wallet)); } catch (e) {} }
+function paintCoins() { const el = document.getElementById('coincount'); if (el) el.textContent = wallet.coins; }
+function addCoins(n) { wallet.coins += n; saveWallet(); paintCoins(); }
+// coins for a finished game: a few for playing, more for lines and score
+const coinsFor = (sc, lines) => Math.min(100, 3 + Math.floor(lines * 1.2) + Math.floor(sc / 40));
 function saveStats() { try { localStorage.setItem('bp-stats', JSON.stringify(stats)); } catch (e) {} }
 
 // block styles: same six slots as COLORS. Unlocked by playing.
@@ -553,6 +611,10 @@ const DIFF = {
   // puzzle: a fixed 8x8 board and a fixed hand with a goal, no random pieces
   puzzle: { label: 'Puzzle', preview: 0, safe: false,    mult: 1 },
 };
+DIFF.daily.tools = false;   // the Daily is pure skill: no undo, hint, remove or power-ups
+// the rules in force right now (later levels add their own through this one place)
+const cfg = () => DIFF[diff];
+const noTools = () => cfg().tools === false;
 
 // ---- daily mode: pieces come from a generator seeded with today's date (UTC) ----
 const today = () => new Date().toISOString().slice(0, 10);
@@ -807,30 +869,13 @@ let hintTimer = null;
 let bombs = new Set();               // board cells that hold a placed, still armed bomb
 const snap = () => JSON.stringify({ grid, pieces, nextPieces, score, combo, rs, gameLines, gameCombo, bombs: [...bombs] });
 
-function place(idx, r, c) {
-  history = snap();
-  hint = null;
-  const p = pieces[idx];
-  let placed = 0;
-  p.shape.forEach((row, i) => row.forEach((v, j) => { if (v) { grid[r + i][c + j] = p.color; placed++; } }));
-  if (p.bomb >= 0 && p.bomb !== undefined) {   // the hidden bomb appears now that the piece is down
-    const cells = [];
-    p.shape.forEach((row, i) => row.forEach((v, j) => { if (v) cells.push((r + i) * N + c + j); }));
-    bombs.add(cells[p.bomb % cells.length]);
-  }
-  pieces[idx] = null;
-  if (DIFF[diff].time && !timer.running && timer.left > 0) startTimer();   // the clock starts with the first move
-
-  const rows = [], cols = [];
-  for (let i = 0; i < N; i++) {
-    if (grid[i].every(Boolean)) rows.push(i);
-    if (grid.every(row => row[i])) cols.push(i);
-  }
+// Clears the given rows and columns, sets off any bombs on them (a bomb caught in a blast chains) and
+// plays the effects. Used by placing a piece and by the Line Clear power-up.
+function resolveClears(rows, cols) {
   const lines = rows.length + cols.length;
   const burst = new Map();   // cleared cells and their colours, for the clear animation
-  rows.forEach(i => { for (let x = 0; x < N; x++) burst.set(i * N + x, grid[i][x]); });
-  cols.forEach(j => { for (let y = 0; y < N; y++) burst.set(y * N + j, grid[y][j]); });
-  // bombs on a cleared line go off and destroy every block within the blast radius; a bomb caught in the blast chains
+  rows.forEach(i => { for (let x = 0; x < N; x++) if (grid[i][x]) burst.set(i * N + x, grid[i][x]); });
+  cols.forEach(j => { for (let y = 0; y < N; y++) if (grid[y][j]) burst.set(y * N + j, grid[y][j]); });
   const blast = new Map(), exploded = [], queue = [...burst.keys()].filter(k => bombs.has(k));
   while (queue.length) {
     const b = queue.shift();
@@ -848,16 +893,38 @@ function place(idx, r, c) {
   rows.forEach(i => { for (let x = 0; x < N; x++) grid[i][x] = null; });
   cols.forEach(j => { for (let y = 0; y < N; y++) grid[y][j] = null; });
   blast.forEach((_, k) => { grid[Math.floor(k / N)][k % N] = null; });
-  [...burst.keys(), ...blast.keys()].forEach(k => bombs.delete(k));
-  const landed = [];
-  p.shape.forEach((row, i) => row.forEach((v, j) => { const k = (r + i) * N + c + j; if (v && !burst.has(k) && !blast.has(k)) landed.push({ idx: k, type: 'land' }); }));
+  const gone = new Set([...burst.keys(), ...blast.keys()]);
+  gone.forEach(k => bombs.delete(k));
   addFx([
-    ...landed,
     ...[...burst].map(([idx, color]) => ({ idx, color, type: 'burst', d: ((idx % N) + Math.floor(idx / N)) * 14 })),
     ...[...blast].map(([idx, o]) => ({ idx, color: o.color, type: 'burst', d: 120 + o.dist * 55 })),
     ...exploded.map(idx => ({ idx, type: 'boom' })),
   ]);
   stats.booms += booms;
+  return { lines, booms, blastCount: blast.size, gone };
+}
+
+function place(idx, r, c) {
+  history = snap();
+  hint = null;
+  const p = pieces[idx];
+  let placed = 0;
+  p.shape.forEach((row, i) => row.forEach((v, j) => { if (v) { grid[r + i][c + j] = p.color; placed++; } }));
+  if (p.bomb >= 0 && p.bomb !== undefined) {   // the hidden bomb appears now that the piece is down
+    const cells = [];
+    p.shape.forEach((row, i) => row.forEach((v, j) => { if (v) cells.push((r + i) * N + c + j); }));
+    bombs.add(cells[p.bomb % cells.length]);
+  }
+  pieces[idx] = null;
+  if (cfg().time && !timer.running && timer.left > 0) startTimer();   // the clock starts with the first move
+
+  const rows = [], cols = [];
+  for (let i = 0; i < N; i++) {
+    if (grid[i].every(Boolean)) rows.push(i);
+    if (grid.every(row => row[i])) cols.push(i);
+  }
+  const { lines, booms, blastCount, gone } = resolveClears(rows, cols);
+  addFx(p.shape.flatMap((row, i) => row.map((v, j) => ({ k: (r + i) * N + c + j, v }))).filter(o => o.v && !gone.has(o.k)).map(o => ({ idx: o.k, type: 'land' })));
 
   // combo: consecutive placements that each clear a line; from the 2nd on it adds 10 x (combo - 1)
   const perfect = (lines > 0 || booms > 0) && grid.every(row => row.every(x => !x));   // the whole board is empty
@@ -868,8 +935,8 @@ function place(idx, r, c) {
   if (perfect) stats.perfects++;
   const comboBonus = combo >= 2 ? 10 * (combo - 1) : 0;
   const perfectBonus = perfect ? Math.round(100 * N / 8) : 0;
-  const blastBonus = blast.size * 2 + booms * 10;
-  const gain = Math.round((placed + (lines ? 10 * lines * lines : 0) + comboBonus + perfectBonus + blastBonus) * DIFF[diff].mult);
+  const blastBonus = blastCount * 2 + booms * 10;
+  const gain = Math.round((placed + (lines ? 10 * lines * lines : 0) + comboBonus + perfectBonus + blastBonus) * cfg().mult);
   if (diff === 'puzzle') score = gameLines; else score += gain;
   saveStats();
   checkUnlocks();
@@ -969,19 +1036,23 @@ function paintCombo() {
   if (combo >= 2 && had !== String(combo)) { cb.classList.remove('pop'); void cb.offsetWidth; cb.classList.add('pop'); }
 }
 function renderTools() {
-  // the Daily is pure skill: no undo, hint or remove, so the whole row goes and the board gets the room
-  $('bottomrow').hidden = diff === 'daily' && DIFF.daily.preview === 0;
-  const u = $('undobtn'), h = $('hintbtn');
+  const blocked = noTools();
+  $('bottomrow').hidden = blocked && cfg().preview === 0;
+  const u = $('undobtn'), h = $('hintbtn'), hm = $('hammerbtn'), tl = $('toolsbtn');
+  [u, h, tl].forEach(b => { b.hidden = blocked; });
+  const badge = n => (n > 0 ? n : 'Ad');
   u.disabled = (locked && diff !== 'puzzle') || !history;
-  u.querySelector('b').textContent = undosLeft > 0 ? undosLeft : 'Ad';
+  u.querySelector('b').textContent = badge(chargesOf('undo'));
   h.disabled = locked;
-  h.querySelector('b').textContent = hintsLeft > 0 ? hintsLeft : 'Ad';
-  const hm = $('hammerbtn'), showHammer = mode === 'crazy' && diff !== 'puzzle' && diff !== 'daily';
-  hm.hidden = !showHammer;
+  h.querySelector('b').textContent = badge(chargesOf('hint'));
+  hm.hidden = blocked || !(mode === 'crazy' && diff !== 'puzzle');
   hm.disabled = locked;
   hm.classList.toggle('active', hammerMode);
-  hm.querySelector('b').textContent = hammersLeft > 0 ? hammersLeft : 'Ad';
+  hm.querySelector('b').textContent = badge(chargesOf('remove'));
+  tl.disabled = locked;
+  tl.querySelector('b').textContent = wallet.inv.shuffle + wallet.inv.line + wallet.inv.freeze;
   boardEl.classList.toggle('hammering', hammerMode);
+  boardEl.classList.toggle('lining', lineArm === 'row' || lineArm === 'col');
 }
 function renderPuzzleBar() {
   const bar = $('puzzlebar');
@@ -1126,7 +1197,7 @@ function loadPuzzle(i) {
 function checkPuzzle() {
   const goal = PUZZLES[puzzleIdx].g, left = pieces.filter(Boolean);
   if (gameLines >= goal) {
-    locked = true; stats.solved[puzzleIdx] = 1; saveStats(); sfx.perfect();
+    locked = true; if (!stats.solved[puzzleIdx]) addCoins(20); stats.solved[puzzleIdx] = 1; saveStats(); sfx.perfect();
     setTimeout(() => { if (locked && diff === 'puzzle') showCard('Solved!', gameLines + ' / ' + goal + ' lines', '', 'Nice. On to the next one?', 'solved'); }, 600);
     render();
   } else if (!left.length || !left.some(p => canPlaceAnywhere(p.shape))) {
@@ -1168,12 +1239,15 @@ function gameOver(reason) {
   clearSave();
   sfx.over();
   stats.games++; stats.topScore = Math.max(stats.topScore, score);
+  let earned = coinsFor(score, gameLines);
+  if (diff === 'daily' && dailyResult() === null) earned += 40;   // first Daily of the day
+  addCoins(earned);
   if (diff === 'daily') updateStreak();
   saveStats();
   checkUnlocks();
   const gap = prevBest - score;
   const newbest = isBest ? 'New best!' : gap <= Math.max(10, prevBest * 0.1) ? 'So close! Just ' + gap + ' short of your best.' : 'Best ' + best;
-  const extra = gameLines + (gameLines === 1 ? ' line' : ' lines') + ' cleared' + (gameCombo >= 2 ? ' \u00b7 best combo \u00d7' + gameCombo : '');
+  const extra = gameLines + (gameLines === 1 ? ' line' : ' lines') + ' cleared' + (gameCombo >= 2 ? ' \u00b7 best combo \u00d7' + gameCombo : '') + ' \u00b7 +' + earned + ' coins';
   const title = reason === 'time' ? 'Time up' : 'Game over';
   if (diff === 'daily') {
     // everyone gets one go; the best of any extra goes (bought with an ad) is the day's score
@@ -1233,7 +1307,7 @@ const MAX_ADS = 3;
 const adsKey = () => 'bp-ads-' + SZ() + today();
 function adsUsed() { try { return +localStorage.getItem(adsKey()) || 0; } catch (e) { return 0; } }
 const adsLeft = () => Math.max(0, MAX_ADS - adsUsed());
-const AD_TEXT = { go: 'Your next go starts in', undo: 'Your undo is ready in', hint: 'Your hint is ready in', hammer: 'Your remove is ready in' };
+const AD_TEXT = { go: 'Your next go starts in', undo: 'Your undo is ready in', hint: 'Your hint is ready in', hammer: 'Your remove is ready in', coins: 'Your coins arrive in' };
 let adTimer = null, adJob = 'go';
 function startAd(job) {
   job = typeof job === 'string' ? job : 'go';
@@ -1258,6 +1332,7 @@ function startAd(job) {
       reset();
     } else if (job === 'undo') { undosLeft++; undo(); }
     else if (job === 'hint') { hintsLeft++; showHint(); }
+    else if (job === 'coins') { wallet.adDay = today(); wallet.adN = (wallet.adDay === today() ? wallet.adN : 0) + 1; addCoins(40); toast('+40 coins'); renderShop(); }
     else { hammersLeft++; setHammer(true); }
   }, 1000);
 }
@@ -1268,16 +1343,27 @@ function cancelAd() {
   if (adJob === 'go') $('over').classList.add('show');
 }
 
+// ---- charges: the free ones for this game come first, then what the player owns ----
+const FREE_GET = { undo: () => undosLeft, hint: () => hintsLeft, remove: () => hammersLeft, shuffle: () => 0, line: () => 0, freeze: () => 0 };
+const chargesOf = t => FREE_GET[t]() + wallet.inv[t];
+function spend(t) {
+  if (t === 'undo' && undosLeft > 0) undosLeft--;
+  else if (t === 'hint' && hintsLeft > 0) hintsLeft--;
+  else if (t === 'remove' && hammersLeft > 0) hammersLeft--;
+  else { wallet.inv[t] = Math.max(0, wallet.inv[t] - 1); saveWallet(); }
+  renderTools();
+}
+
 // ---- undo and hint ----
 function undo() {
-  if (diff === 'daily' || (locked && diff !== 'puzzle') || !history) return;
-  if (undosLeft <= 0) { startAd('undo'); return; }
+  if (noTools() || (locked && diff !== 'puzzle') || !history) return;
+  if (chargesOf('undo') <= 0) { startAd('undo'); return; }
   const s = JSON.parse(history);
   ({ grid, pieces, nextPieces, score, combo, rs, gameLines, gameCombo } = s);
   bombs = new Set(s.bombs || []);
   history = null; hint = null; fx = []; locked = false;
   $('over').classList.remove('show');
-  undosLeft--;
+  spend('undo');
   sfx.tick();
   render(); saveGame();
 }
@@ -1337,11 +1423,11 @@ function bestMove() {
   return top;
 }
 function showHint() {
-  if (locked || diff === 'daily') return;
-  if (hintsLeft <= 0) { startAd('hint'); return; }
+  if (locked || noTools()) return;
+  if (chargesOf('hint') <= 0) { startAd('hint'); return; }
   const m = bestMove();
   if (!m) return;
-  hintsLeft--;
+  spend('hint');
   const p = pieces[m.idx], cells = new Set();
   p.shape.forEach((row, i) => row.forEach((v, j) => v && cells.add((m.r + i) * N + m.c + j)));
   hint = { idx: m.idx, r: m.r, c: m.c, cells, color: p.color };
@@ -1352,34 +1438,145 @@ function showHint() {
 }
 // ---- hammer (Crazy only): smash any single block ----
 function setHammer(on) {
-  if (on && (locked || mode !== 'crazy' || diff === 'puzzle' || diff === 'daily')) return;
+  if (on && (locked || mode !== 'crazy' || diff === 'puzzle' || noTools())) return;
   hammerMode = on;
   if (on) { clearSel(); hint = null; toast('Tap a block to remove it'); }
   render();
 }
 function useHammer() {
   if (hammerMode) { setHammer(false); return; }
-  if (locked || diff === 'daily') return;
-  if (hammersLeft <= 0) { startAd('hammer'); return; }
+  if (locked || noTools()) return;
+  if (chargesOf('remove') <= 0) { startAd('hammer'); return; }
   setHammer(true);
 }
 boardEl.addEventListener('click', e => {
-  if (!hammerMode || locked) return;
+  const lining = lineArm === 'row' || lineArm === 'col';
+  if ((!hammerMode && !lining) || locked) return;
   const rect = boardEl.getBoundingClientRect(), pitch = (rect.width - 12) / N;
   const c = Math.floor((e.clientX - rect.left - 6) / pitch), r = Math.floor((e.clientY - rect.top - 6) / pitch);
-  if (r < 0 || r >= N || c < 0 || c >= N || !grid[r][c]) return;   // only blocks can be smashed
+  if (r < 0 || r >= N || c < 0 || c >= N) return;
+  if (lining) {   // Line Clear: wipe the tapped row or column, bombs on it go off
+    history = snap();
+    const res = resolveClears(lineArm === 'row' ? [r] : [], lineArm === 'col' ? [c] : []);
+    spend('line');
+    lineArm = null; hideModebar();
+    sfx.clear(1, 0); buzz([14, 40, 20]);
+    if (res.booms) { sfx.boom(); showPop(res.blastCount * 2 + res.booms * 10, 0, false, res.booms); }
+    render(); saveGame();
+    return;
+  }
+  if (!grid[r][c]) return;   // only blocks can be removed
   history = snap();
   const idx = r * N + c;
   addFx([{ idx, color: grid[r][c], type: 'burst', d: 0 }]);
   grid[r][c] = null;
-  bombs.delete(idx);   // smashing a bomb disarms it
-  hammersLeft--;
+  bombs.delete(idx);   // removing a bomb disarms it
+  spend('remove');
   hammerMode = false;
   sfx.smash(); buzz(25);
   render(); saveGame();
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && hammerMode) setHammer(false); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (hammerMode) setHammer(false); if (lineArm) cancelLine(); } });
 $('hammerbtn').addEventListener('click', useHammer);
+// ---- shop ----
+const AD_COIN_LIMIT = 5;
+function openShop(focus) { renderShop(); $('shop').classList.add('show'); if (focus) setTimeout(() => { const r = document.querySelector('[data-item="' + focus + '"]'); if (r) r.scrollIntoView({ block: 'center' }); }, 60); }
+function closeShop() { $('shop').classList.remove('show'); }
+function buy(t, qty, cost) {
+  if (wallet.coins < cost) return;
+  wallet.coins -= cost; wallet.inv[t] += qty;
+  saveWallet(); paintCoins(); sfx.tick(); renderShop(); renderTools();
+}
+function renderShop() {
+  $('shopcoins').textContent = wallet.coins;
+  const body = $('shopbody');
+  body.innerHTML = '';
+  const row = (nm, sub, own) => {
+    const d = document.createElement('div'); d.className = 'shoprow';
+    const n = document.createElement('div'); n.className = 'nm'; n.innerHTML = '<b></b><small></small>'; n.firstChild.textContent = nm; n.lastChild.textContent = sub;
+    const o = document.createElement('div'); o.className = 'own'; o.textContent = own || '';
+    d.appendChild(n); d.appendChild(o); body.appendChild(d); return d;
+  };
+  const btn = (label, onclick, cls, off) => { const b = document.createElement('button'); b.className = 'buybtn ' + (cls || ''); b.innerHTML = label; b.disabled = !!off; b.addEventListener('click', onclick); return b; };
+  const free = row('Free daily gift', 'A few coins every day just for visiting');
+  const gift = wallet.giftDay !== today();
+  const fb = document.createElement('div'); fb.className = 'buys';
+  fb.appendChild(btn(gift ? 'Claim 25 coins' : 'Come back tomorrow', () => { wallet.giftDay = today(); addCoins(25); sfx.clear(1, 0); renderShop(); }, 'go', !gift));
+  free.appendChild(fb);
+  const adsToday = wallet.adDay === today() ? wallet.adN : 0;
+  const adr = row('Watch an ad', 'Earn 40 coins (' + Math.max(0, AD_COIN_LIMIT - adsToday) + ' left today)');
+  const ab = document.createElement('div'); ab.className = 'buys';
+  ab.appendChild(btn('Watch ad for 40 coins', () => startAd('coins'), '', adsToday >= AD_COIN_LIMIT));
+  adr.appendChild(ab);
+  TOOLS.forEach(t => {
+    const it = ITEMS[t], d = row(it.name, it.desc, 'You have ' + wallet.inv[t]);
+    d.dataset.item = t;
+    const bs = document.createElement('div'); bs.className = 'buys';
+    bs.appendChild(btn('Buy 1 <i class="coin"></i> ' + it.price, () => buy(t, 1, it.price), '', wallet.coins < it.price));
+    bs.appendChild(btn('Buy ' + it.bundle[0] + ' <i class="coin"></i> ' + it.bundle[1], () => buy(t, it.bundle[0], it.bundle[1]), '', wallet.coins < it.bundle[1]));
+    d.appendChild(bs);
+  });
+}
+$('coinbtn').addEventListener('click', () => openShop());
+$('shopclose').addEventListener('click', closeShop);
+
+// ---- power-ups sheet: Shuffle, Line Clear, Freeze and Restart ----
+function openSheet() { renderSheet(); $('sheet').classList.add('show'); }
+function closeSheet() { $('sheet').classList.remove('show'); }
+let restartArmed = false;
+function renderSheet() {
+  const body = $('sheetbody');
+  body.innerHTML = '';
+  const row = (t, sub, onUse, label, off) => {
+    const d = document.createElement('div'); d.className = 'shoprow';
+    const n = document.createElement('div'); n.className = 'nm'; n.innerHTML = '<b></b><small></small>'; n.firstChild.textContent = t; n.lastChild.textContent = sub;
+    const b = document.createElement('button'); b.className = 'buybtn go'; b.style.flex = 'none'; b.style.padding = '9px 16px'; b.textContent = label; b.disabled = !!off; b.addEventListener('click', onUse);
+    d.appendChild(n); d.appendChild(b); body.appendChild(d);
+  };
+  const timed = !!cfg().time, puz = diff === 'puzzle';
+  row('Shuffle', 'Swap your three pieces for new ones. You have ' + wallet.inv.shuffle, useShuffle, 'Use', puz || locked);
+  row('Line Clear', 'Clear a whole row or column. You have ' + wallet.inv.line, useLine, 'Use', locked);
+  row('Freeze', timed ? 'Adds 10 seconds. You have ' + wallet.inv.freeze : 'Only works in Timed. You have ' + wallet.inv.freeze, useFreeze, 'Use', !timed || locked);
+  row('Restart', restartArmed ? 'Tap again to throw this game away' : 'Start this game over', () => { if (!restartArmed) { restartArmed = true; renderSheet(); setTimeout(() => { restartArmed = false; }, 4000); return; } restartArmed = false; closeSheet(); reset(); }, restartArmed ? 'Sure?' : 'Restart', false);
+  const shop = document.createElement('button'); shop.className = 'ghostbtn'; shop.textContent = 'Get more in the Shop'; shop.style.display = 'block'; shop.style.margin = '12px auto 0';
+  shop.addEventListener('click', () => { closeSheet(); openShop(); });
+  body.appendChild(shop);
+}
+function needTool(t) {
+  if (chargesOf(t) > 0) return true;
+  closeSheet(); toast('Out of ' + ITEMS[t].name + '. Get more in the Shop.'); openShop(t);
+  return false;
+}
+function useShuffle() {
+  if (locked || noTools() || diff === 'puzzle' || !needTool('shuffle')) return;
+  history = snap();
+  const keep = nextPieces;
+  nextPieces = null; dealPieces(); nextPieces = keep;   // a fresh hand, same preview
+  spend('shuffle'); hint = null; sfx.tick(); closeSheet(); render(); saveGame();
+  if (!pieces.some(x => x && canPlaceAnywhere(x.shape))) gameOver();
+}
+function useFreeze() {
+  if (locked || noTools() || !cfg().time) return;
+  if (!needTool('freeze')) return;
+  spend('freeze');
+  timer.left += 10; if (timer.running) timer.end += 10000;
+  paintCombo(); closeSheet(); toast('+10 seconds'); sfx.tick();
+}
+let lineArm = null;   // null | 'pick' | 'row' | 'col'
+function showModebar(text) { $('modetext').textContent = text; $('modrow').hidden = lineArm !== 'pick'; $('modcol').hidden = lineArm !== 'pick'; $('modebar').hidden = false; }
+function hideModebar() { $('modebar').hidden = true; }
+function useLine() {
+  if (locked || noTools() || !needTool('line')) return;
+  closeSheet(); setHammer(false); clearSel();
+  lineArm = 'pick'; showModebar('Clear a'); renderTools();
+}
+function cancelLine() { lineArm = null; hideModebar(); renderTools(); }
+$('modrow').addEventListener('click', () => { lineArm = 'row'; showModebar('Tap any cell in the row'); renderTools(); });
+$('modcol').addEventListener('click', () => { lineArm = 'col'; showModebar('Tap any cell in the column'); renderTools(); });
+$('modcancel').addEventListener('click', cancelLine);
+$('toolsbtn').addEventListener('click', openSheet);
+$('sheetclose').addEventListener('click', closeSheet);
+
 $('undobtn').addEventListener('click', undo);
 $('hintbtn').addEventListener('click', showHint);
 
@@ -1387,7 +1584,7 @@ function reset(save = true) {
   locked = false;
   stopTimer();
   hint = null; history = null; bombs = new Set();
-  undosLeft = 1; hintsLeft = 1; hammersLeft = 1; hammerMode = false; gameLines = 0; gameCombo = 0;
+  undosLeft = 1; hintsLeft = 1; hammersLeft = 1; hammerMode = false; lineArm = null; hideModebar(); gameLines = 0; gameCombo = 0;
   timer.left = DIFF[diff].time || 0;
   loadBest();
   $('over').classList.remove('show');
@@ -1794,6 +1991,7 @@ function closeHelp() {
 }
 $('helpclose').addEventListener('click', closeHelp);
 
+paintCoins();
 start();
 loadVoice();
 document.addEventListener('pointerdown', loadVoice, { once: true, capture: true });   // try again on the first tap if it was too early
