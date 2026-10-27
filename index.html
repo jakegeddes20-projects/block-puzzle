@@ -292,25 +292,38 @@ const shapePool = () => SHAPES;   // classic: the original pieces on every board
 // Crazy mode: piece size follows the board. S is the biggest box a piece may fill (3, 4, 5, 6 for 6x6 to 12x12),
 // and the cell count is capped well below a full box so pieces stay a manageable size.
 const crazyBox = () => Math.floor(N / 2);
+const crazyCap = S => Math.round(S * S * 0.4) + 2;
+const cellsOf = sh => sh.flat().reduce((a, b) => a + b, 0);
+const isSolid = sh => sh.every(r => r.every(Boolean));   // plain rectangles and lines are left to Classic
 
-// A tidy piece: a solid rectangle with a corner or two bitten off, sometimes a notch in one edge.
-// That gives L, T, U and stepped shapes that look intentional, never a random scribble.
-function tidy(S) {
-  const maxCells = Math.round(S * S * 0.4) + 2;
-  for (let tries = 0; tries < 30; tries++) {
-    const w = 1 + Math.floor(rand() * S), h = 1 + Math.floor(rand() * S);
-    if (w * h < 3 || w * h > maxCells + 2) continue;
-    const g = Array.from({ length: h }, () => Array(w).fill(1));
-    if (w > 1 && h > 1) {
-      const bites = Math.floor(rand() * 3);   // 0, 1 or 2 corners
-      for (let i = 0; i < bites; i++) g[rand() < 0.5 ? 0 : h - 1][rand() < 0.5 ? 0 : w - 1] = 0;
-      if (w >= 3 && h >= 2 && rand() < 0.3) g[rand() < 0.5 ? 0 : h - 1][1 + Math.floor(rand() * (w - 2))] = 0;   // edge notch
-    }
-    const cells = g.flat().reduce((a, b) => a + b, 0);
-    if (cells >= 3 && cells <= maxCells && isOnePiece(g)) return g;
-  }
-  return [[1, 1, 1]];
+// The odd ones out: C, T, plus, W, F, N, Y, Z and friends. Each is turned and flipped at random when dealt.
+const WILD = [
+  [[0,1,1],[1,1,0],[0,1,0]],            // F
+  [[0,1],[0,1],[1,1],[1,0]],            // N
+  [[1,1],[1,1],[1,0]],                  // P
+  [[1,1,1],[0,1,0],[0,1,0]],            // T, long stem
+  [[1,0,1],[1,1,1]],                    // C / U
+  [[1,1],[1,0],[1,1]],                  // C, short
+  [[1,1,1],[1,0,0],[1,1,1]],            // C, deep
+  [[1,1,1,1],[1,0,0,1]],                // C, wide
+  [[1,0,0],[1,1,0],[0,1,1]],            // W
+  [[0,1,0],[1,1,1],[0,1,0]],            // plus
+  [[0,1],[1,1],[0,1],[0,1]],            // Y
+  [[1,1,0],[0,1,0],[0,1,1]],            // Z
+  [[1,0,1],[1,1,1],[1,0,1]],            // H
+  [[1,0,0],[1,1,0],[1,1,1]],            // stairs
+  [[1,1,1,0],[0,1,1,1]],                // long S
+  [[1,1,1,1,1],[0,0,1,0,0]],            // wide T
+  [[1,0,0,0],[1,0,0,0],[1,1,1,1]],      // big corner
+  [[1,1,1],[0,1,0],[1,1,1]],            // I-beam
+  [[1,1,0],[0,1,1],[0,0,1]],            // diagonal wave
+].concat(SHAPES_BIG.filter(sh => !isSolid(sh) && sh.length > 1 && sh[0].length > 1));
+function turn(sh) { return sh[0].map((_, x) => sh.map(row => row[x]).reverse()); }   // 90 degrees clockwise
+function orient(sh) {
+  for (let k = Math.floor(rand() * 4); k > 0; k--) sh = turn(sh);
+  return rand() < 0.5 ? sh.map(r => r.slice().reverse()) : sh;
 }
+
 function isOnePiece(g) {   // every cell connected, no empty row or column
   const h = g.length, w = g[0].length;
   if (g.some(r => !r.some(Boolean))) return false;
@@ -324,20 +337,45 @@ function isOnePiece(g) {   // every cell connected, no empty row or column
       if (ny >= 0 && ny < h && nx >= 0 && nx < w && g[ny][nx] && !seen.has(ny * w + nx)) { seen.add(ny * w + nx); stack.push([ny, nx]); }
     }
   }
-  return seen.size === g.flat().reduce((a, b) => a + b, 0);
+  return seen.size === cellsOf(g);
 }
+
+// A blob grown cell by cell, preferring cells that touch several existing ones so it stays chunky, not stringy.
+function blob(S) {
+  const maxCells = crazyCap(S);
+  for (let tries = 0; tries < 12; tries++) {
+    const want = 4 + Math.floor(Math.pow(rand(), 1.4) * (maxCells - 3));
+    const cells = new Set([Math.floor(rand() * S) * S + Math.floor(rand() * S)]);
+    while (cells.size < want) {
+      const options = [];
+      for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+        if (cells.has(y * S + x)) continue;
+        const n = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dy, dx]) => cells.has((y + dy) * S + x + dx) && y + dy >= 0 && y + dy < S && x + dx >= 0 && x + dx < S).length;
+        for (let i = 0; i < n * n; i++) options.push(y * S + x);   // more touching neighbours, more likely
+      }
+      if (!options.length) break;
+      cells.add(options[Math.floor(rand() * options.length)]);
+    }
+    let y0 = S, y1 = -1, x0 = S, x1 = -1;
+    cells.forEach(k => { const y = Math.floor(k / S), x = k % S; y0 = Math.min(y0, y); y1 = Math.max(y1, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); });
+    const g = [];
+    for (let y = y0; y <= y1; y++) { const row = []; for (let x = x0; x <= x1; x++) row.push(cells.has(y * S + x) ? 1 : 0); g.push(row); }
+    if (!isSolid(g) && g.length > 1 && g[0].length > 1 && cellsOf(g) / (g.length * g[0].length) >= 0.5) return g;
+  }
+  return WILD[Math.floor(rand() * WILD.length)];
+}
+
 function crazyShape() {
-  const S = crazyBox(), r = rand();
-  if (r < 0.25) {                                                    // a familiar piece now and then, kept to the board's scale
-    const familiar = SHAPES.filter(sh => Math.max(sh.length, sh[0].length) <= S + 1);
+  const S = crazyBox(), cap = crazyCap(S), r = rand();
+  if (r < 0.5) {                                                      // the odd ones out, turned at random
+    const fit = WILD.filter(sh => Math.max(sh.length, sh[0].length) <= S + 1 && cellsOf(sh) <= cap);
+    if (fit.length) return orient(fit[Math.floor(rand() * fit.length)]);
+  }
+  if (r > 0.95) {                                                     // very occasionally a plain classic piece
+    const familiar = SHAPES.filter(sh => Math.max(sh.length, sh[0].length) <= S);
     return familiar[Math.floor(rand() * familiar.length)];
   }
-  if (r < 0.55) {                                                    // hand-made bigger shapes that suit this board
-    const cap = Math.round(S * S * 0.4) + 1;   // keep hand-made shapes in proportion to the board
-    const fit = SHAPES_BIG.filter(sh => Math.max(sh.length, sh[0].length) <= S + 1 && sh.flat().reduce((a, b) => a + b, 0) <= cap);
-    if (fit.length) return fit[Math.floor(rand() * fit.length)];
-  }
-  return tidy(S);
+  return blob(S);
 }
 // Crazy outside the daily: never deal a piece that has no room on the board right now.
 function fitShape() {
