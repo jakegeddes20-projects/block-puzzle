@@ -2392,64 +2392,7 @@ const sfx = {
 };
 const buzz = pattern => { if (soundOn && navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) {} } };
 
-// ---- voice call-outs: short recorded clips played through the same audio path as the effects ----
-let voiceOn = true;
-try { voiceOn = localStorage.getItem('bp-voice') !== '0'; } catch (e) {}
-const VOICE_FILES = ['nice', 'good', 'clean', 'sweet', 'double', 'great', 'niceone', 'triple', 'awesome', 'wow', 'incredible', 'amazing', 'unreal',
-  'combo2', 'combo3', 'combo4', 'unstoppable', 'legendary', 'perfect', 'boom', 'chain'];
-const voiceBuf = {};
-let voiceLoading = false, voiceSrc = null;
-function loadVoice() {
-  if (voiceLoading) return;
-  const a = audio();
-  if (!a) return;
-  voiceLoading = true;
-  VOICE_FILES.forEach(id => {
-    fetch('/voice/' + id + '.wav').then(r => r.arrayBuffer()).then(b => a.decodeAudioData(b)).then(buf => { voiceBuf[id] = buf; }).catch(() => {});
-  });
-}
-function say(id) {
-  if (!voiceOn || !soundOn) return;
-  const a = audio();
-  if (!a) return;
-  const buf = voiceBuf[id];
-  if (!buf) { loadVoice(); return; }   // not downloaded yet, so skip this one
-  try { if (voiceSrc) voiceSrc.stop(); } catch (e) {}
-  const src = a.createBufferSource(), g = a.createGain();
-  src.buffer = buf; g.gain.value = 0.6;
-  src.connect(g); g.connect(out(a));
-  src.start();
-  voiceSrc = src;
-}
-const pickOne = list => list[Math.floor(Math.random() * list.length)];
-const CALLOUTS = {
-  1: ['nice', 'good', 'clean', 'sweet'],
-  2: ['double', 'great', 'niceone'],
-  3: ['triple', 'awesome', 'wow'],
-  4: ['incredible', 'amazing', 'unreal'],
-};
-// one clip per move, most special first: perfect clear, bombs, combos, then the number of lines
-function calloutText(lines, perfect, booms) {
-  if (perfect) return 'perfect';
-  if (booms) return booms > 1 ? 'chain' : 'boom';
-  if (!lines) return '';
-  if (combo >= 8) return 'legendary';
-  if (combo >= 5) return 'unstoppable';
-  if (combo >= 2) return 'combo' + combo;
-  return pickOne(CALLOUTS[Math.min(lines, 4)]);
-}
-function callout(lines, perfect, booms) {
-  const id = calloutText(lines, perfect, booms);
-  if (id) setTimeout(() => say(id), 140);   // just after the clear sound starts
-}
-function toggleVoice() {
-  voiceOn = !voiceOn;
-  try { localStorage.setItem('bp-voice', voiceOn ? '1' : '0'); } catch (e) {}
-  if (voiceOn) { loadVoice(); say('nice'); }
-}
-
 function feedback(lines, gain, perfect, booms) {
-  callout(lines, perfect, booms);
   if (booms) { sfx.boom(); buzz([60, 25, 90, 25, 60, 25, 40]); if (perfect) sfx.perfect(); showPop(gain, lines, perfect, booms); }
   else if (perfect) { sfx.perfect(); buzz([20, 40, 20, 40, 30]); showPop(gain, lines, true); }
   else if (lines) { sfx.clear(lines, combo); buzz([14, 40, 20]); showPop(gain, lines); }
@@ -2731,7 +2674,6 @@ function renderSettings() {
   lookBtn.addEventListener('click', () => { $('settings').classList.remove('show'); openShop('looks'); });
   row('Look', 'Themes are bought in the Shop', lookBtn);
   row('Sound and vibration', '', sw(soundOn, toggleSound));
-  row('Voice call-outs', 'Says things when you clear lines', sw(voiceOn, toggleVoice));
   row('Sound volume', '', seg([[1.4, 'Normal'], [2.2, 'Loud'], [3.2, 'Max']], sfxVol, v => { sfxVol = v; keep('bp-sfxvol', v); sfx.clear(2, 1); }));
   row('Reduce motion', 'Calmer effects, no shaking', sw(rm, () => { rm = !rm; keep('bp-rm', rm ? '1' : '0'); document.body.classList.toggle('rm', rm); }));
   row('Colour-blind marks', 'Adds a shape to each colour', sw(cbMode, () => { cbMode = !cbMode; keep('bp-cb', cbMode ? '1' : '0'); document.body.classList.toggle('cb', cbMode); render(); }));
@@ -2827,8 +2769,6 @@ $('helpclose').addEventListener('click', closeHelp);
 
 paintCoins();
 start();
-loadVoice();
-document.addEventListener('pointerdown', loadVoice, { once: true, capture: true });   // try again on the first tap if it was too early
 let seenHelp = false;
 try { seenHelp = !!localStorage.getItem('bp-help'); } catch (e) {}
 if (!seenHelp) $('help').classList.add('show');
