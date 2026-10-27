@@ -156,6 +156,8 @@
   .nslot .q { color: var(--muted); font-size: 20px; font-weight: 700; opacity: .6; }
   .piece.mini .pc { width: var(--pc, var(--mcell)); height: var(--pc, var(--mcell)); padding: 1px; }
 
+  #newgame { width: 100%; padding: 13px 0; border-radius: 14px; background: var(--accent); color: var(--accent-ink); font-size: 16px; font-weight: 700; margin-top: 10px; }
+  #newgame[hidden] { display: none; }
   #lbtop { width: 100%; padding: 12px 0; border-radius: 14px; background: var(--panel); color: var(--text); border: 1px solid var(--line); font-size: 14px; font-weight: 600; transition: background .15s; }
   #lbtop:hover { background: var(--raised); }
   #lbtop[hidden] { display: none; }
@@ -374,6 +376,7 @@
     <div id="coach" hidden><span id="coachtext"></span><button id="coachskip" class="mini">Skip</button></div>
     <div id="modebar" hidden><span id="modetext"></span><button id="modrow" class="mini">Row</button><button id="modcol" class="mini">Column</button><button id="modcancel" class="mini ghost">Cancel</button></div></div>
   <div id="tray"></div>
+  <button id="newgame" hidden>Play again</button>
   <div class="bottomrow" id="bottomrow">
     <div id="next"></div>
   <div class="tools2">
@@ -726,6 +729,7 @@ const weeklyKey = () => 'bp-weekly-' + isoWeek(today()) + '-' + weeklyMod().id;
 function weeklyResult() { try { const v = localStorage.getItem(weeklyKey()); return v === null ? null : +v; } catch (e) { return null; } }
 function dailyResult() { try { const v = localStorage.getItem(dailyKey()); return v === null ? null : +v; } catch (e) { return null; } }
 let grid, pieces, nextPieces, score, best, combo = 0, diff = 'medium';
+let cardShown = false;   // a results card has come up for the current game
 let locked = false;   // true once a game is over (or today's daily is used up): nothing can be placed
 try { const d = localStorage.getItem('bp-diff'); if (DIFF[d]) diff = d; } catch (e) {}
 // puzzles are always 8x8 classic; remember the board the player had so leaving puzzles restores it
@@ -1114,6 +1118,8 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(queueFit);
 function render() {
   paintScore();
   renderBoard(); renderTray(); renderNext(); renderDiff(); renderTools(); renderPuzzleBar();
+  const ng = $('newgame'); ng.hidden = !(locked && cardShown && !$('over').classList.contains('show'));
+  ng.textContent = diff === 'daily' ? 'View results' : $('again').textContent;
   queueFit();
   $('lbtop').hidden = diff !== 'daily' && diff !== 'weekly';
   $('lbtop').textContent = (diff === 'weekly' ? 'Weekly' : 'Daily') + ' leaderboard (' + (mode === 'crazy' ? 'Crazy ' : '') + N + '\u00d7' + N + ')';
@@ -1460,6 +1466,7 @@ function showCard(title, final, newbest, note, kind, extra) {
   $('chalbtn').hidden = !(kind === 'normal' && CHAL_BASES.includes(diff));
   $('chalbtn').textContent = 'Challenge a friend';
   $('over').classList.add('show');
+  cardShown = true;
 }
 
 // opened from the Daily button once today's go has been used
@@ -1599,7 +1606,7 @@ function undo() {
   ({ grid, pieces, nextPieces, score, combo, rs, gameLines, gameCombo } = s);
   bombs = new Set(s.bombs || []);
   if (s.riseLeft !== undefined) riseLeft = s.riseLeft;
-  history = null; hint = null; fx = []; locked = false;
+  history = null; hint = null; fx = []; locked = false; cardShown = false;
   $('over').classList.remove('show');
   spend('undo');
   sfx.tick();
@@ -1819,7 +1826,7 @@ $('undobtn').addEventListener('click', undo);
 $('hintbtn').addEventListener('click', showHint);
 
 function reset(save = true) {
-  locked = false;
+  locked = false; cardShown = false;
   stopTimer();
   watch.elapsed = 0; riseLeft = riseInterval();
   hint = null; history = null; bombs = new Set();
@@ -1840,7 +1847,7 @@ function reset(save = true) {
 }
 // open the game saved for the current level, or start a new one
 function start() {
-  if (loadGame()) { locked = false; stopTimer(); loadBest(); $('over').classList.remove('show'); render(); }
+  if (loadGame()) { locked = false; cardShown = false; stopTimer(); loadBest(); $('over').classList.remove('show'); render(); }
   else if (diff === 'daily' && dailyResult() !== null) { reset(false); showDailyDone(); }   // today's go is used
   else reset();
 }
@@ -1851,7 +1858,8 @@ $('again').addEventListener('click', () => {
 });
 $('adbtn').addEventListener('click', () => startAd('go'));
 $('adcancel').addEventListener('click', cancelAd);
-$('closebtn').addEventListener('click', () => $('over').classList.remove('show'));
+$('closebtn').addEventListener('click', () => { $('over').classList.remove('show'); render(); });
+$('newgame').addEventListener('click', () => { if (diff === 'daily') showDailyDone(); else $('again').click(); });
 
 // ---- daily leaderboard: /api (Vercel functions + Upstash Redis) ----
 // No accounts: a random player id lives in this browser and a chosen username is reserved for it on the server.
