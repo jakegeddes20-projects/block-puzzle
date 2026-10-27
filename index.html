@@ -333,6 +333,9 @@
   .badge b { display: block; font-size: 14px; font-weight: 700; }
   .badge small { display: block; color: var(--muted); font-size: 11.5px; line-height: 1.3; margin-top: 2px; }
   .badge.locked { opacity: .45; }
+  .bico { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; margin-bottom: 8px; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent-text); }
+  .badge.locked .bico { background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--muted); }
+  .bico svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .badge .rw { color: var(--accent-text); font-weight: 800; font-size: 11.5px; margin-top: 4px; }
   .levelmenu { max-height: calc(100dvh - 170px); overflow-y: auto; }
   .lvhead { padding: 10px 12px 4px; color: var(--muted); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
@@ -2534,6 +2537,28 @@ function nextGoals() {
   else out.push({ title: 'All daily missions done', val: '', r: 1 });
   return out;
 }
+const BADGE_ICON = {
+  first: '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+  l100: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  l1000: '<path d="m3 8 4 4 5-7 5 7 4-4-2 11H5z"/>',
+  c5: '<path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/>',
+  c8: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  big4: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+  perfect: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+  bomb10: '<circle cx="11" cy="14" r="6.5"/><path d="M15.5 9 19 5.5M19 3v2M21 5h-2"/>',
+  bomb50: '<path d="M12 2v5M12 17v5M2 12h5M17 12h5M5 5l3.5 3.5M15.5 15.5 19 19M19 5l-3.5 3.5M8.5 15.5 5 19"/>',
+  s1000: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>',
+  s3000: '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4v2a4 4 0 0 0 4 4M16 6h4v2a4 4 0 0 1-4 4M12 13v4M8 20h8M10 17h4"/>',
+  g25: '<path d="M8 5v14l11-7z"/>',
+  g100: '<circle cx="12" cy="14" r="6"/><path d="M8.5 3 12 9l3.5-6"/>',
+  st3: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+  st7: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4M9 15l2 2 4-4"/>',
+  p10: '<path d="M9 4h3a2 2 0 1 1 4 0h3v5a2 2 0 1 0 0 4v5h-5a2 2 0 1 0-4 0H5v-5a2 2 0 1 1 0-4V4z"/>',
+  p20: '<path d="m12 3 9 5-9 5-9-5z"/><path d="M7 11v5c0 1.5 2.2 3 5 3s5-1.5 5-3v-5"/>',
+  weekly: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  rival: '<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
+  shop: '<path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+};
 let ach = [];
 try { ach = JSON.parse(localStorage.getItem('bp-ach')) || []; } catch (e) {}
 function checkAchievements() {
@@ -2595,7 +2620,7 @@ function renderStats() {
     const g = box.querySelector('.badges');
     BADGES.forEach(b => {
       const d = document.createElement('div'); d.className = 'badge' + (ach.includes(b.id) ? '' : ' locked');
-      d.innerHTML = '<b></b><small></small><div class="rw"></div>';
+      d.innerHTML = '<div class="bico"><svg viewBox="0 0 24 24" aria-hidden="true">' + (BADGE_ICON[b.id] || BADGE_ICON.first) + '</svg></div><b></b><small></small><div class="rw"></div>';
       d.querySelector('b').textContent = b.name; d.querySelector('small').textContent = b.desc; d.querySelector('.rw').textContent = '+' + b.reward + ' coins';
       g.appendChild(d);
     });
