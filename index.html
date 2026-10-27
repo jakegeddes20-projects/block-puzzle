@@ -326,6 +326,8 @@
   .badge small { display: block; color: var(--muted); font-size: 11.5px; line-height: 1.3; margin-top: 2px; }
   .badge.locked { opacity: .45; }
   .badge .rw { color: var(--accent-text); font-weight: 800; font-size: 11.5px; margin-top: 4px; }
+  .levelmenu { max-height: calc(100dvh - 170px); overflow-y: auto; }
+  .lvhead { padding: 10px 12px 4px; color: var(--muted); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important; } }
 </style>
 </head>
@@ -442,7 +444,7 @@
     <li><b>Remove.</b> In Crazy you can also remove one block: tap Remove, then tap any block on the board. One free per game, then an ad earns another.</li>
     <li><b>Help.</b> Undo takes back your last move and Hint shows a good spot. Each has one free use per game, then an ad earns another. The Daily has none of these.</li>
   </ol>
-  <p class="small">The game ends when none of your pieces fit. Easy shows your next 3 pieces, Medium shows 1, Hard shows none. Timed gives you 2 minutes. Puzzle sets a goal with a fixed board and pieces.</p>
+  <p class="small">The game ends when none of your pieces fit. Easy shows your next 3 pieces, Medium shows 1, Hard shows none. Timed gives you 2 minutes, Puzzle sets a goal, and the Weekly Challenge changes its rules every week. Rising pushes new rows up from below, Sprint is a race to 20 lines, Zen never ends, and Cleanup starts with a messy board.</p>
   <button id="helpclose">Got it</button>
 </div></div>
 
@@ -648,6 +650,11 @@ DIFF.daily.seeded = true;
 let chal = null;
 const CHAL_BASES = ['easy', 'medium', 'hard', 'timed'];
 DIFF.challenge = { label: 'Challenge', preview: 1, safe: false, mult: 1, tools: false, seeded: true, hidden: true };
+// extra modes
+DIFF.rising  = { label: 'Rising',  preview: 1, safe: 'hidden', mult: 1, rise: true };      // a new row pushes up every few moves
+DIFF.sprint  = { label: 'Sprint',  preview: 1, safe: 'hidden', mult: 1, sprint: 20 };      // clear 20 lines as fast as you can
+DIFF.zen     = { label: 'Zen',     preview: 3, safe: 'any',    mult: 1, zen: true };       // no game over, unlimited undo and hints
+DIFF.cleanup = { label: 'Cleanup', preview: 1, safe: 'hidden', mult: 1, messy: true };      // start with a cluttered board
 const cfg = () => (diff === 'weekly' ? { ...DIFF.weekly, ...weeklyMod() }
   : diff === 'challenge' && chal ? { ...DIFF.challenge, preview: DIFF[chal.base].preview, time: DIFF[chal.base].time }
   : DIFF[diff]);
@@ -936,8 +943,9 @@ let undosLeft = 1, hintsLeft = 1;    // free per game; more come from watching a
 let gameLines = 0, gameCombo = 0;    // for the game over summary
 let hint = null;                     // { idx, r, c, cells, color } while a hint is showing
 let hintTimer = null;
+let riseLeft = 0;                    // Rising: moves until the next row pushes up
 let bombs = new Set();               // board cells that hold a placed, still armed bomb
-const snap = () => JSON.stringify({ grid, pieces, nextPieces, score, combo, rs, gameLines, gameCombo, bombs: [...bombs] });
+const snap = () => JSON.stringify({ grid, pieces, nextPieces, score, combo, rs, gameLines, gameCombo, riseLeft, bombs: [...bombs] });
 
 // Clears the given rows and columns, sets off any bombs on them (a bomb caught in a blast chains) and
 // plays the effects. Used by placing a piece and by the Line Clear power-up.
@@ -987,6 +995,7 @@ function place(idx, r, c) {
   }
   pieces[idx] = null;
   if (cfg().time && !timer.running && timer.left > 0) startTimer();   // the clock starts with the first move
+  if (cfg().sprint && !watch.running) startWatch();
 
   const rows = [], cols = [];
   for (let i = 0; i < N; i++) {
@@ -1012,19 +1021,25 @@ function place(idx, r, c) {
   checkUnlocks();
   trackMove(lines, booms, perfect);
   if (diff === 'puzzle') { render(); feedback(lines, gain, perfect, booms); checkPuzzle(); return; }
+  if (cfg().sprint && gameLines >= cfg().sprint) { render(); feedback(lines, gain, perfect, booms); sprintOver(); return; }
+  if (cfg().rise && --riseLeft <= 0) {   // Rising: the next row pushes up
+    riseLeft = riseInterval();
+    if (!riseRow()) { render(); feedback(lines, gain, perfect, booms); gameOver('rise'); return; }
+  }
   if (pieces.every(x => !x)) dealPieces();
   render();
   feedback(lines, gain, perfect, booms);
-  if (!pieces.some(x => x && canPlaceAnywhere(x.shape))) gameOver();
+  if (cfg().zen && score > best) { best = score; try { localStorage.setItem('bp-best-' + SZ() + diff, best); } catch (e) {} }
+  if (!pieces.some(x => x && canPlaceAnywhere(x.shape))) { if (cfg().zen) { zenRescue(); saveGame(); } else gameOver(); }
   else saveGame();
 }
 
 // ---- each difficulty keeps its own game in progress (Timed and Puzzle always start fresh) ----
 const saveKey = () => 'bp-save-' + SZ() + diff;
-const noSave = () => diff === 'puzzle' || diff === 'challenge' || !!cfg().time;
+const noSave = () => diff === 'puzzle' || diff === 'challenge' || !!cfg().time || !!cfg().sprint;
 function saveGame() {
   if (noSave()) return;
-  try { localStorage.setItem(saveKey(), JSON.stringify({ grid, pieces, nextPieces, score, combo, rs, date: today(), week: isoWeek(today()), curSeed, gameLines, gameCombo, undosLeft, hintsLeft, hammersLeft, bombs: [...bombs] })); } catch (e) {}
+  try { localStorage.setItem(saveKey(), JSON.stringify({ grid, pieces, nextPieces, score, combo, rs, date: today(), week: isoWeek(today()), curSeed, riseLeft, gameLines, gameCombo, undosLeft, hintsLeft, hammersLeft, bombs: [...bombs] })); } catch (e) {}
 }
 function clearSave() { try { localStorage.removeItem(saveKey()); } catch (e) {} }
 function loadGame() {
@@ -1035,6 +1050,7 @@ function loadGame() {
     if (diff === 'daily' && s.date !== today()) return false;   // yesterday's daily is over
     if (diff === 'weekly' && s.week !== isoWeek(today())) return false;   // last week's weekly is over
     curSeed = s.curSeed | 0;
+    riseLeft = s.riseLeft === undefined ? riseInterval() : s.riseLeft;
     ({ grid, pieces, nextPieces, score, combo } = s);
     rs = s.rs | 0;
     gameLines = s.gameLines | 0; gameCombo = s.gameCombo | 0;
@@ -1083,16 +1099,27 @@ function render() {
   $('lbtop').textContent = (diff === 'weekly' ? 'Weekly' : 'Daily') + ' leaderboard (' + (mode === 'crazy' ? 'Crazy ' : '') + N + '\u00d7' + N + ')';
 }
 function paintScore() {
-  const puz = diff === 'puzzle';
-  $('score').textContent = score;   // in puzzles this is lines cleared
-  $('scorelabel').textContent = puz ? 'Lines' : 'Score';
-  $('bestlabel').textContent = puz ? 'Solved' : 'Best';
-  $('best').textContent = puz ? Object.keys(stats.solved).length + '/' + PUZZLES.length : Math.max(best, score);
+  const puz = diff === 'puzzle', spr = !!cfg().sprint;
+  $('score').textContent = spr ? gameLines + '/' + cfg().sprint : score;   // puzzles and Sprint count lines
+  $('scorelabel').textContent = puz || spr ? 'Lines' : 'Score';
+  $('bestlabel').textContent = puz ? 'Solved' : spr ? 'Best time' : 'Best';
+  $('best').textContent = puz ? Object.keys(stats.solved).length + '/' + PUZZLES.length : spr ? (sprintBest() ? fmtWatch(sprintBest()) : '-') : Math.max(best, score);
   paintCombo();
 }
 const fmtTime = t => { const n = Math.ceil(t); return Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0'); };
 function paintCombo() {
   const cb = $('combo');
+  if (cfg().sprint) {   // Sprint shows the stopwatch
+    cb.style.visibility = 'visible'; cb.classList.remove('urgent');
+    $('combolabel').textContent = 'Time'; $('combon').textContent = fmtWatch(watch.elapsed);
+    return;
+  }
+  if (cfg().rise) {   // Rising shows how many moves until the next row
+    cb.style.visibility = 'visible';
+    $('combolabel').textContent = 'Next row'; $('combon').textContent = 'in ' + riseLeft;
+    cb.classList.toggle('urgent', riseLeft <= 1);
+    return;
+  }
   if (cfg().time) {   // Timed shows the clock where the combo badge normally sits
     cb.style.visibility = 'visible';
     $('combolabel').textContent = 'Time';
@@ -1113,7 +1140,7 @@ function renderTools() {
   $('bottomrow').hidden = blocked && cfg().preview === 0;
   const u = $('undobtn'), h = $('hintbtn'), hm = $('hammerbtn'), tl = $('toolsbtn');
   [u, h, tl].forEach(b => { b.hidden = blocked; });
-  const badge = n => (n > 0 ? n : 'Ad');
+  const badge = n => (n === Infinity ? '\u221e' : n > 0 ? n : 'Ad');
   u.disabled = (locked && diff !== 'puzzle') || !history;
   u.querySelector('b').textContent = badge(chargesOf('undo'));
   h.disabled = locked;
@@ -1146,9 +1173,9 @@ function renderPuzzleBar() {
 // ---- the clock for Timed ----
 const timer = { left: 0, running: false, end: 0, id: null };
 function startTimer() { timer.running = true; timer.end = performance.now() + timer.left * 1000; clearInterval(timer.id); timer.id = setInterval(tickTimer, 200); }
-function pauseTimer() { if (!timer.running) return; timer.left = Math.max(0, (timer.end - performance.now()) / 1000); clearInterval(timer.id); timer.id = null; }
-function resumeTimer() { if (timer.running && !timer.id) { timer.end = performance.now() + timer.left * 1000; timer.id = setInterval(tickTimer, 200); } }
-function stopTimer() { clearInterval(timer.id); timer.id = null; timer.running = false; }
+function pauseTimer() { pauseWatch(); if (!timer.running) return; timer.left = Math.max(0, (timer.end - performance.now()) / 1000); clearInterval(timer.id); timer.id = null; }
+function resumeTimer() { resumeWatch(); if (timer.running && !timer.id) { timer.end = performance.now() + timer.left * 1000; timer.id = setInterval(tickTimer, 200); } }
+function stopTimer() { stopWatch(); clearInterval(timer.id); timer.id = null; timer.running = false; }
 function tickTimer() {
   timer.left = Math.max(0, (timer.end - performance.now()) / 1000);
   paintCombo();
@@ -1189,7 +1216,16 @@ const DESCS = {
   weekly: () => weeklyMod().desc + ' Play as often as you like, your best counts.',
   challenge: 'A friend\u2019s game: same pieces, beat their score',
 };
-const DOTS = { challenge: '#ff6b81', weekly: '#c77dff', easy: '#3fd9a0', medium: '#ffb938', hard: '#ff6b81', timed: '#a07bff', daily: '#4cc3ff', puzzle: '#ff8f4d' };
+const DOTS = { challenge: '#ff6b81', weekly: '#c77dff', easy: '#3fd9a0', medium: '#ffb938', hard: '#ff6b81', timed: '#a07bff', daily: '#4cc3ff', puzzle: '#ff8f4d',
+  rising: '#ff8f4d', sprint: '#00d9ff', zen: '#9be7c4', cleanup: '#ffd166' };
+Object.assign(SUBS, { rising: () => 'rows rise', sprint: () => '20 lines', zen: () => 'no game over', cleanup: () => 'messy start' });
+Object.assign(DESCS, {
+  rising: 'A new row pushes up every few moves. Do not let it reach the top.',
+  sprint: 'Clear 20 lines as fast as you can. Your best time is saved.',
+  zen: 'Relax: unlimited undo and hints, and your pieces always fit.',
+  cleanup: 'Start with a cluttered board and tidy it up for points.',
+});
+const LEVEL_GROUPS = [['Levels', ['easy', 'medium', 'hard']], ['Challenges', ['timed', 'daily', 'weekly', 'puzzle']], ['Modes', ['rising', 'sprint', 'zen', 'cleanup']]];
 const CHEV = '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 const TICK = '<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
 const SIZE_DESCS = { 6: 'Tight and tricky', 8: 'The classic', 10: 'Roomier, longer games', 12: 'Big board, long runs' };
@@ -1209,6 +1245,7 @@ function picker(kind, trigger, items, disabled) {
   m.className = 'levelmenu ' + kind + 'menu';
   m.setAttribute('role', 'menu');
   items.forEach(it => {
+    if (it.header) { const h = document.createElement('div'); h.className = 'lvhead'; h.textContent = it.header; m.appendChild(h); return; }
     const b = document.createElement('button');
     b.setAttribute('role', 'menuitem');
     if (it.on) b.className = 'on';
@@ -1222,7 +1259,8 @@ function renderDiff() {
   $('diff').innerHTML = '';
   picker('level',
     '<span class="lv"><i class="dot" style="background:' + DOTS[diff] + '"></i><b>' + DIFF[diff].label + '</b><small>' + SUBS[diff]() + '</small></span>',
-    Object.keys(DIFF).filter(k => !DIFF[k].hidden).map(k => ({ label: DIFF[k].label, desc: typeof DESCS[k] === 'function' ? DESCS[k]() : DESCS[k], dot: DOTS[k], on: k === diff, pick: () => setDiff(k) })));
+    [...LEVEL_GROUPS.flatMap(([head, keys]) => [{ header: head }, ...keys.map(k => ({ label: DIFF[k].label, desc: typeof DESCS[k] === 'function' ? DESCS[k]() : DESCS[k], dot: DOTS[k], on: k === diff, pick: () => setDiff(k) }))]),
+      ...(diff === 'challenge' ? [{ label: 'Challenge', desc: DESCS.challenge, dot: DOTS.challenge, on: true, pick: () => {} }] : [])]);
   picker('mode',
     '<span class="lv"><b>' + (mode === 'crazy' ? 'Crazy' : 'Classic') + '</b></span>',
     ['classic', 'crazy'].map(m => ({ label: m === 'crazy' ? 'Crazy' : 'Classic', desc: MODE_DESCS[m], on: m === mode, pick: () => setMode(m) })),
@@ -1337,7 +1375,7 @@ function gameOver(reason) {
   const gap = prevBest - score;
   const newbest = isBest ? 'New best!' : gap <= Math.max(10, prevBest * 0.1) ? 'So close! Just ' + gap + ' short of your best.' : 'Best ' + best;
   const extra = gameLines + (gameLines === 1 ? ' line' : ' lines') + ' cleared' + (gameCombo >= 2 ? ' \u00b7 best combo \u00d7' + gameCombo : '') + ' \u00b7 +' + earned + ' coins';
-  const title = reason === 'time' ? 'Time up' : 'Game over';
+  const title = reason === 'time' ? 'Time up' : reason === 'rise' ? 'Overflow!' : 'Game over';
   if (diff === 'weekly') {
     const prevW = weeklyResult(), topW = prevW === null ? score : Math.max(prevW, score);
     try { localStorage.setItem(weeklyKey(), topW); } catch (e) {}
@@ -1456,10 +1494,75 @@ function cancelAd() {
   if (adJob === 'go') $('over').classList.add('show');
 }
 
+// ---- Rising: a new row pushes up from the bottom every few moves ----
+const riseInterval = () => Math.max(4, N - 2);
+function riseRow() {
+  if (grid[0].some(Boolean)) return false;   // something would be pushed off the top
+  for (let y = 0; y < N - 1; y++) grid[y] = grid[y + 1];
+  const holes = new Set(), want = 1 + (N >= 10 ? 1 : 0) + (rand() < 0.4 ? 1 : 0);
+  while (holes.size < want) holes.add(Math.floor(rand() * N));
+  grid[N - 1] = Array.from({ length: N }, (_, x) => (holes.has(x) ? null : COLORS[Math.floor(rand() * COLORS.length)]));
+  bombs = new Set([...bombs].map(k => k - N).filter(k => k >= 0));
+  const cols = [];
+  for (let x = 0; x < N; x++) if (grid.every(r => r[x])) cols.push(x);   // a new row can finish a column
+  if (cols.length) resolveClears([], cols);
+  addFx(grid[N - 1].map((c, x) => (c ? { idx: (N - 1) * N + x, type: 'land' } : null)).filter(Boolean));
+  sfx.tick(); buzz(30); toast('New row!');
+  return true;
+}
+
+// ---- Sprint: a stopwatch, 20 lines ----
+const watch = { running: false, t0: 0, elapsed: 0, id: null };
+function startWatch() { watch.running = true; watch.t0 = performance.now() - watch.elapsed * 1000; clearInterval(watch.id); watch.id = setInterval(tickWatch, 100); }
+function tickWatch() { watch.elapsed = (performance.now() - watch.t0) / 1000; paintCombo(); }
+function pauseWatch() { if (!watch.running) return; watch.elapsed = (performance.now() - watch.t0) / 1000; clearInterval(watch.id); watch.id = null; }
+function resumeWatch() { if (watch.running && !watch.id) { watch.t0 = performance.now() - watch.elapsed * 1000; watch.id = setInterval(tickWatch, 100); } }
+function stopWatch() { clearInterval(watch.id); watch.id = null; watch.running = false; }
+const fmtWatch = t => Math.floor(t / 60) + ':' + (t % 60).toFixed(1).padStart(4, '0');
+const sprintKey = () => 'bp-sprint-' + SZ();
+function sprintBest() { try { return +localStorage.getItem(sprintKey()) || 0; } catch (e) { return 0; } }
+function sprintOver() {
+  stopWatch(); stopTimer();
+  const t = watch.elapsed, prev = sprintBest(), isBest = !prev || t < prev;
+  if (isBest) { try { localStorage.setItem(sprintKey(), t); } catch (e) {} }
+  locked = true; sfx.perfect();
+  stats.games++; saveStats();
+  const earned = 20 + (isBest ? 10 : 0);
+  addCoins(earned); trackGameEnd(false);
+  shareText = 'Sprint: ' + cfg().sprint + ' lines in ' + fmtWatch(t) + ' on Block Puzzle 2 (' + N + '×' + N + (mode === 'crazy' ? ' Crazy' : '') + '). Can you beat it?\n' + SITE;
+  setTimeout(() => { if (locked && cfg().sprint) showCard('Sprint complete', fmtWatch(t), isBest ? 'New best time!' : 'Best ' + fmtWatch(prev), '', 'normal', gameLines + ' lines · +' + earned + ' coins'); }, 500);
+  render();
+}
+
+// ---- Zen: never game over. When nothing fits, fresh pieces appear and, if the board is nearly full, the bottom rows are cleared ----
+function fitAnyShape() {
+  const pool = mode === 'crazy' ? Array.from({ length: 40 }, crazyShape).concat([[[1]]]) : SHAPES;
+  const ok = pool.filter(canPlaceAnywhere);
+  return ok.length ? ok[Math.floor(Math.random() * ok.length)] : [[1]];
+}
+function zenRescue() {
+  if (grid.flat().filter(c => !c).length < 6) {
+    for (const y of [N - 1, N - 2]) for (let x = 0; x < N; x++) { grid[y][x] = null; bombs.delete(y * N + x); }
+  }
+  pieces = newHand().map(p => (canPlaceAnywhere(p.shape) ? p : { ...p, shape: fitAnyShape() }));
+  nextPieces = newHand();
+  toast('No room: fresh pieces'); sfx.tick();
+  render();
+}
+
+// ---- Cleanup: the board starts cluttered ----
+function fillMessy() {
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (rand() < 0.3) grid[y][x] = COLORS[Math.floor(rand() * COLORS.length)];
+  for (let y = 0; y < N; y++) if (grid[y].every(Boolean)) grid[y][Math.floor(rand() * N)] = null;   // never start with a full line
+  for (let x = 0; x < N; x++) if (grid.every(r => r[x])) grid[Math.floor(rand() * N)][x] = null;
+}
+
 // ---- charges: the free ones for this game come first, then what the player owns ----
 const FREE_GET = { undo: () => undosLeft, hint: () => hintsLeft, remove: () => hammersLeft, shuffle: () => 0, line: () => 0, freeze: () => 0 };
-const chargesOf = t => FREE_GET[t]() + wallet.inv[t];
+const unlimited = t => !!cfg().zen && (t === 'undo' || t === 'hint' || t === 'remove');   // Zen has no limits on these
+const chargesOf = t => (unlimited(t) ? Infinity : FREE_GET[t]() + wallet.inv[t]);
 function spend(t) {
+  if (unlimited(t)) { renderTools(); return; }
   if (t === 'undo' && undosLeft > 0) undosLeft--;
   else if (t === 'hint' && hintsLeft > 0) hintsLeft--;
   else if (t === 'remove' && hammersLeft > 0) hammersLeft--;
@@ -1474,6 +1577,7 @@ function undo() {
   const s = JSON.parse(history);
   ({ grid, pieces, nextPieces, score, combo, rs, gameLines, gameCombo } = s);
   bombs = new Set(s.bombs || []);
+  if (s.riseLeft !== undefined) riseLeft = s.riseLeft;
   history = null; hint = null; fx = []; locked = false;
   $('over').classList.remove('show');
   spend('undo');
@@ -1666,7 +1770,7 @@ function useShuffle() {
   const keep = nextPieces;
   nextPieces = null; dealPieces(); nextPieces = keep;   // a fresh hand, same preview
   spend('shuffle'); hint = null; sfx.tick(); closeSheet(); render(); saveGame();
-  if (!pieces.some(x => x && canPlaceAnywhere(x.shape))) gameOver();
+  if (!pieces.some(x => x && canPlaceAnywhere(x.shape))) { if (cfg().zen) zenRescue(); else gameOver(); }
 }
 function useFreeze() {
   if (locked || noTools() || !cfg().time) return;
@@ -1696,6 +1800,7 @@ $('hintbtn').addEventListener('click', showHint);
 function reset(save = true) {
   locked = false;
   stopTimer();
+  watch.elapsed = 0; riseLeft = riseInterval();
   hint = null; history = null; bombs = new Set();
   undosLeft = 1; hintsLeft = 1; hammersLeft = 1; hammerMode = false; lineArm = null; hideModebar(); gameLines = 0; gameCombo = 0;
   timer.left = cfg().time || 0;
@@ -1707,6 +1812,7 @@ function reset(save = true) {
   combo = 0;
   curSeed = gameSeed(); rs = curSeed;   // the daily and weekly are the same for everyone; other games start from a random seed
   nextPieces = null;
+  if (cfg().messy) fillMessy();
   dealPieces();
   render();
   if (save) saveGame();
