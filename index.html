@@ -64,6 +64,11 @@
   .icon:hover { color: var(--text); background: var(--raised); }
   .icon svg { width: 18px; height: 18px; }
 
+  .modeseg { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+  .modeseg button { background: transparent; color: var(--muted); border-radius: 10px; padding: 8px 0; font-size: 14px; font-weight: 700; display: flex; justify-content: center; align-items: baseline; gap: 8px; transition: background .15s, color .15s; }
+  .modeseg button small { font-size: 11px; font-weight: 500; opacity: .75; }
+  .modeseg button:hover { color: var(--text); }
+  .modeseg button.on { background: var(--raised); color: var(--text); box-shadow: inset 0 0 0 1.5px var(--accent); }
   .levelpick { position: relative; width: 100%; z-index: 15; display: flex; gap: 8px; }
   .levelbtn { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: 16px;
     background: var(--panel); color: var(--text); border: 1px solid var(--line); box-shadow: var(--shadow); text-align: left; transition: background .15s; }
@@ -191,6 +196,7 @@
     </div>
   </div>
   <div id="diff" class="levelpick"></div>
+  <div id="mode" class="modeseg"></div>
   <div class="scorebar">
     <div class="stat"><small>Score</small><b id="score">0</b></div>
     <div id="combo" class="stat combo" style="visibility:hidden"><small>Combo</small><b id="combon">×0</b></div>
@@ -236,7 +242,7 @@
 <div id="help"><div class="card">
   <h2>How to play</h2>
   <ol class="steps">
-    <li><b>Pick.</b> Choose a level and a board size (6\u00d76 to 12\u00d712) from the menus at the top.</li>
+    <li><b>Pick.</b> Choose a level, a board size (6\u00d76 to 12\u00d712) and Classic or Crazy mode at the top. Crazy mixes in wild shapes sized to the board.</li>
     <li><b>Place.</b> Drag a piece onto the board, or tap a piece and then tap where it goes.</li>
     <li><b>Clear.</b> Fill a whole row or column to clear it.</li>
     <li><b>Combo.</b> Clear lines on back-to-back turns for bonus points.</li>
@@ -252,7 +258,9 @@ let N = 8;   // board is N x N
 try { const z = +localStorage.getItem('bp-size'); if (SIZES.includes(z)) N = z; } catch (e) {}
 document.documentElement.style.setProperty('--n', N);
 // 8x8 keeps the original storage keys so existing saves and bests carry over; other sizes get their own
-const SZ = () => (N === 8 ? '' : N + '-');
+let mode = 'classic';   // classic = the original pieces, crazy = wild shapes scaled to the board
+try { const m = localStorage.getItem('bp-mode'); if (m === 'classic' || m === 'crazy') mode = m; } catch (e) {}
+const SZ = () => (mode === 'crazy' ? 'c-' : '') + (N === 8 ? '' : N + '-');
 const COLORS = ['#ff6b81', '#ffb938', '#3fd9a0', '#4cc3ff', '#a07bff', '#ff8f4d'];
 const SHAPES = [
   [[1]], [[1,1]], [[1,1,1]], [[1,1,1,1]], [[1,1,1,1,1]],
@@ -279,7 +287,36 @@ const SHAPES_BIG = [
   [[1,0,1],[1,1,1]], [[1,1,1],[1,0,1]], [[1,1],[1,0],[1,1]], [[1,1],[0,1],[1,1]], // U shapes
   [[1,1,1,0],[0,1,1,1]], [[0,1,1,1],[1,1,1,0]],                     // long S and Z
 ];
-const shapePool = () => (N === 12 ? SHAPES.concat(SHAPES_BIG) : SHAPES);
+const shapePool = () => SHAPES;   // classic: the original pieces on every board size
+
+// Crazy mode: piece size follows the board. S is the biggest box a piece may fill (3, 4, 5, 6 for 6x6 to 12x12).
+function blob(S) {
+  const maxCells = Math.round(S * S * 0.6) + 2;
+  const want = 3 + Math.floor(rand() * (maxCells - 2));
+  const cells = new Set([Math.floor(rand() * S) * S + Math.floor(rand() * S)]);
+  for (let guard = 0; cells.size < want && guard < 300; guard++) {   // grow one connected cell at a time
+    const arr = [...cells], base = arr[Math.floor(rand() * arr.length)];
+    const d = Math.floor(rand() * 4), y = Math.floor(base / S) + [-1, 1, 0, 0][d], x = (base % S) + [0, 0, -1, 1][d];
+    if (y >= 0 && y < S && x >= 0 && x < S) cells.add(y * S + x);
+  }
+  let y0 = S, y1 = -1, x0 = S, x1 = -1;
+  cells.forEach(k => { const y = Math.floor(k / S), x = k % S; y0 = Math.min(y0, y); y1 = Math.max(y1, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); });
+  const shape = [];
+  for (let y = y0; y <= y1; y++) { const row = []; for (let x = x0; x <= x1; x++) row.push(cells.has(y * S + x) ? 1 : 0); shape.push(row); }
+  return shape;
+}
+function crazyShape() {
+  const S = Math.floor(N / 2), r = rand();
+  if (r < 0.2) return SHAPES[Math.floor(rand() * SHAPES.length)];   // a familiar piece now and then
+  if (r < 0.45) {                                                    // hand-made big shapes that suit this board
+    const cap = Math.round(S * S * 0.6) + 4;   // keep hand-made shapes in proportion to the board
+    const fit = SHAPES_BIG.filter(sh => Math.max(sh.length, sh[0].length) <= S + 1 && sh.flat().reduce((a, b) => a + b, 0) <= cap);
+    if (fit.length) return fit[Math.floor(rand() * fit.length)];
+  }
+  return blob(S);
+}
+// a shape for the current mode and board
+const anyShape = () => (mode === 'crazy' ? crazyShape() : SHAPES[Math.floor(rand() * SHAPES.length)]);
 
 // preview = how many of the next hand's pieces are shown
 // safe = hand is guaranteed to contain a playable piece: 'any' may swap any piece,
@@ -304,7 +341,7 @@ function rand() {
   t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
-const sizeTag = () => (N === 8 ? '' : ' ' + N + '\u00d7' + N);
+const sizeTag = () => (mode === 'crazy' ? ' Crazy' : '') + (N === 8 ? '' : ' ' + N + '\u00d7' + N);
 const dailyKey = () => 'bp-daily-' + SZ() + today();
 function dailyResult() { try { const v = localStorage.getItem(dailyKey()); return v === null ? null : +v; } catch (e) { return null; } }
 let grid, pieces, nextPieces, score, best, combo = 0, diff = 'medium';
@@ -324,8 +361,7 @@ const $ = id => document.getElementById(id);
 const boardEl = $('board'), trayEl = $('tray'), ghostEl = $('ghost');
 
 function newPiece() {
-  const pool = shapePool();
-  return { shape: pool[Math.floor(rand() * pool.length)], color: COLORS[Math.floor(rand() * COLORS.length)] };
+  return { shape: anyShape(), color: COLORS[Math.floor(rand() * COLORS.length)] };
 }
 const newHand = () => [newPiece(), newPiece(), newPiece()];
 // The next hand is generated one hand ahead so it can be previewed.
@@ -335,7 +371,8 @@ function dealPieces() {
   // medium and hard: guarantee at least one piece in the hand can be placed
   const safe = DIFF[diff].safe;
   if (safe && !pieces.some(p => canPlaceAnywhere(p.shape))) {
-    const ok = shapePool().filter(canPlaceAnywhere);
+    // crazy has no fixed list: try a batch of fresh shapes, with the single block as the last resort
+    const ok = (mode === 'crazy' ? Array.from({ length: 60 }, crazyShape).concat([[[1]]]) : SHAPES).filter(canPlaceAnywhere);
     const slots = safe === 'hidden' ? [1, 2] : [0, 1, 2];   // slot 0 is the one medium previewed
     if (ok.length) pieces[slots[Math.floor(Math.random() * slots.length)]].shape = ok[Math.floor(Math.random() * ok.length)];
   }
@@ -576,9 +613,9 @@ function render() {
   cb.style.visibility = combo >= 2 ? 'visible' : 'hidden';
   $('combon').textContent = '×' + combo;
   if (combo >= 2 && had !== String(combo)) { cb.classList.remove('pop'); void cb.offsetWidth; cb.classList.add('pop'); }
-  renderBoard(); renderTray(); renderNext(); renderDiff();
+  renderBoard(); renderTray(); renderNext(); renderDiff(); renderMode();
   $('lbtop').hidden = diff !== 'daily';
-  $('lbtop').textContent = 'Daily leaderboard (' + N + '\u00d7' + N + ')';
+  $('lbtop').textContent = 'Daily leaderboard (' + (mode === 'crazy' ? 'Crazy ' : '') + N + '\u00d7' + N + ')';
 }
 
 function renderNext() {
@@ -606,7 +643,7 @@ const DESCS = {
 const DOTS = { easy: '#3fd9a0', medium: '#ffb938', hard: '#ff6b81', daily: '#4cc3ff' };
 const CHEV = '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 const TICK = '<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
-const SIZE_DESCS = { 6: 'Tight and tricky', 8: 'The classic', 10: 'Roomier, longer games', 12: 'Big board, bigger pieces' };
+const SIZE_DESCS = { 6: 'Tight and tricky', 8: 'The classic', 10: 'Roomier, longer games', 12: 'Big board, long runs' };
 let menuOpen = null;   // 'level' | 'size' | null
 function picker(kind, trigger, items) {
   const el = $('diff');
@@ -639,6 +676,27 @@ function renderDiff() {
   picker('size',
     '<span class="lv"><b>' + N + '\u00d7' + N + '</b></span>',
     SIZES.map(z => ({ label: z + '\u00d7' + z, desc: SIZE_DESCS[z], on: z === N, pick: () => setSize(z) })));
+}
+const MODE_SUBS = { classic: 'original pieces', crazy: 'wild shapes' };
+function renderMode() {
+  const el = $('mode');
+  el.innerHTML = '';
+  for (const m of ['classic', 'crazy']) {
+    const b = document.createElement('button');
+    b.className = m === mode ? 'on' : '';
+    b.innerHTML = m[0].toUpperCase() + m.slice(1) + '<small>' + MODE_SUBS[m] + '</small>';
+    b.addEventListener('click', () => setMode(m));
+    el.appendChild(b);
+  }
+}
+// like board size, each mode keeps its own game in progress, bests, daily and leaderboard
+function setMode(m) {
+  if (m === mode) return;
+  clearSel();
+  mode = m;
+  fx = [];
+  try { localStorage.setItem('bp-mode', m); } catch (e) {}
+  start();
 }
 function closeMenu() { if (menuOpen) { menuOpen = null; renderDiff(); } }
 document.addEventListener('click', e => { if (menuOpen && !$('diff').contains(e.target)) closeMenu(); });
@@ -787,7 +845,7 @@ async function api(path, body) {
 }
 async function loadLb() {
   try {
-    const d = await api('/api/top', { id: playerId(), size: N });
+    const d = await api('/api/top', { id: playerId(), size: N, mode });
     lbRows = d.rows; lbYou = d.you; lbDay = d.day; lbState = 'ok';
   } catch (e) { lbState = 'down'; }
   renderLb();
@@ -795,7 +853,7 @@ async function loadLb() {
 function renderLb() {
   const ol = $('lbl');
   ol.innerHTML = '';
-  $('lbday').textContent = N + '\u00d7' + N + ' \u00b7 ' + lbDay + ' (UTC)';
+  $('lbday').textContent = (mode === 'crazy' ? 'Crazy ' : '') + N + '\u00d7' + N + ' \u00b7 ' + lbDay + ' (UTC)';
   $('whoami').textContent = nick ? 'Playing as ' + nick : 'You have no name yet.';
   const none = text => { const li = document.createElement('li'); li.className = 'none'; li.textContent = text; ol.appendChild(li); };
   if (lbState === 'loading') return none('Loading...');
@@ -826,7 +884,7 @@ async function submitScore(promptName) {
   const mine = dailyResult();
   if (mine === null) return;
   if (!nick) { if (promptName) openName(false); return; }
-  try { await api('/api/score', { id: playerId(), score: mine, size: N }); }
+  try { await api('/api/score', { id: playerId(), score: mine, size: N, mode }); }
   catch (e) {
     if (e.code === 'no_name') { nick = ''; openName(false); }   // the server lost this name; claim it again
     $('lbstatus').textContent = 'Could not send your score yet.';

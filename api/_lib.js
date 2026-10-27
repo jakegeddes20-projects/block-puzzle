@@ -16,7 +16,10 @@ const badName = n => { const s = n.toLowerCase().replace(/[^a-z]/g, ''); return 
 // board size from the request body: missing means 8x8; anything else must be a known size
 const sizeOf = body => (body && body.size !== undefined ? body.size : 8);
 // 8x8 keeps the original key, so scores saved before board sizes existed stay valid
-const dayKey = size => (size === 8 ? 'day:' + today() : 'day:' + size + ':' + today());
+const MODES = ['classic', 'crazy'];
+const modeOf = body => (body && body.mode !== undefined ? body.mode : 'classic');
+// classic 8x8 keeps the original key; crazy boards get a 'c' in the key
+const dayKey = (size, mode) => 'day:' + (mode === 'crazy' ? 'c:' : '') + (size === 8 && mode !== 'crazy' ? '' : size + ':') + today();
 
 function send(res, code, body) {
   res.setHeader('Cache-Control', 'no-store');
@@ -29,4 +32,4 @@ function guard(req, res) {
   return true;
 }
 
-module.exports = { redis, today, ID_RE, NAME_RE, MAX_SCORE, SIZES, sizeOf, dayKey, badName, send, guard };
+module.exports = { redis, today, ID_RE, NAME_RE, MAX_SCORE, SIZES, MODES, sizeOf, modeOf, dayKey, badName, send, guard };
