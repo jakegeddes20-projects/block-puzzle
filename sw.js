@@ -1,6 +1,6 @@
 // Lets the game open offline. The page is fetched fresh whenever there is a connection,
 // so a new deploy shows up on the next load; the saved copy is only used when the network fails.
-const CACHE = 'bp-v2';
+const CACHE = 'bp-v3';
 const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
@@ -13,7 +13,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/music/') || e.request.headers.has('range')) return;   // never cache the leaderboard, and let the browser stream the music itself
+  if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return;   // never cache the leaderboard
   e.respondWith(
     fetch(e.request)
       .then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return res; })

@@ -265,7 +265,6 @@
   .sw i { width: 12px; height: 12px; border-radius: 4px; display: block; }
   #settings .card > button, #settingsbody > .ghostbtn { display: block; margin-left: auto; margin-right: auto; }
   #settingsbody > .ghostbtn { margin-top: 14px; }
-  .credits { margin: 14px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; text-align: center; }
   .sublabel { margin: 14px 0 0; color: var(--muted); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
 
   body.lefty .topbar { flex-direction: row-reverse; }
@@ -1534,6 +1533,19 @@ $('share').addEventListener('click', async () => {
 let soundOn = true;
 try { soundOn = localStorage.getItem('bp-sound') !== '0'; } catch (e) {}
 let actx = null;
+let sfxVol = 2.2;   // master level for effects
+try { const v = +localStorage.getItem('bp-sfxvol'); if ([1.4, 2.2, 3.2].includes(v)) sfxVol = v; } catch (e) {}
+// every effect goes through one gain stage and a compressor, so turning them up never distorts
+function out(a) {
+  if (!a._bus) {
+    const g = a.createGain(), c = a.createDynamicsCompressor();
+    c.threshold.value = -14; c.knee.value = 8; c.ratio.value = 10; c.attack.value = 0.002; c.release.value = 0.2;
+    g.connect(c); c.connect(a.destination);
+    a._bus = g;
+  }
+  a._bus.gain.value = sfxVol;
+  return a._bus;
+}
 function audio() {
   if (!soundOn) return null;
   try {
@@ -1552,7 +1564,7 @@ function tone(freq, dur, type, vol, when, slideTo) {
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(vol || 0.07, t + 0.012);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g); g.connect(a.destination);
+  o.connect(g); g.connect(out(a));
   o.start(t); o.stop(t + dur + 0.03);
 }
 // white noise through a filter that sweeps from one frequency to another, for explosions
@@ -1574,19 +1586,19 @@ function noise(dur, vol, when, type, f0, f1) {
   g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
   g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol * 0.3), t + Math.max(0.02, dur * 0.4));   // a held body, then the fade
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  src.connect(f); f.connect(g); g.connect(a.destination);
+  src.connect(f); f.connect(g); g.connect(out(a));
   src.start(t); src.stop(t + dur + 0.05);
 }
 const NOTES = [523.25, 659.25, 783.99, 987.77, 1174.66, 1318.51];   // C major pentatonic-ish, rising
 const sfx = {
-  tick: () => tone(640, 0.05, 'sine', 0.04),
-  place: () => tone(250, 0.1, 'triangle', 0.09, 0, 150),
+  tick: () => tone(640, 0.06, 'sine', 0.14),
+  place: () => { tone(250, 0.12, 'triangle', 0.34, 0, 140); tone(120, 0.1, 'sine', 0.25, 0, 70); },
   clear: (lines, cb) => {
     const lift = Math.pow(2, Math.min(cb, 8) / 12);   // each combo step raises the pitch a semitone
-    tone(180, 0.12, 'triangle', 0.08, 0, 110);
-    for (let i = 0; i < Math.min(2 + lines, NOTES.length); i++) tone(NOTES[i] * lift, 0.22, 'sine', 0.07, 0.04 + i * 0.06);
+    tone(180, 0.14, 'triangle', 0.24, 0, 100);
+    for (let i = 0; i < Math.min(2 + lines, NOTES.length); i++) tone(NOTES[i] * lift, 0.26, 'sine', 0.17, 0.04 + i * 0.06);
   },
-  over: () => [392, 330, 262, 196].forEach((f, i) => tone(f, 0.32, 'triangle', 0.08, 0.15 + i * 0.16)),
+  over: () => [392, 330, 262, 196].forEach((f, i) => tone(f, 0.34, 'triangle', 0.2, 0.15 + i * 0.16)),
   // a real bang: a sharp crack, a roaring noise burst that closes down, a deep thump and a rumbling tail
   boom: () => {
     noise(0.06, 0.32, 0, 'highpass', 2500, 2500);
@@ -1595,8 +1607,8 @@ const sfx = {
     tone(95, 0.7, 'sine', 0.32, 0, 28);
     tone(60, 0.9, 'triangle', 0.2, 0.02, 24);
   },
-  smash: () => { tone(170, 0.14, 'square', 0.1, 0, 55); tone(1100, 0.06, 'sine', 0.05, 0, 400); },
-  perfect: () => [523.25, 659.25, 783.99, 1046.5, 1318.51, 1568].forEach((f, i) => tone(f, 0.3, 'sine', 0.07, i * 0.07)),
+  smash: () => { tone(170, 0.16, 'square', 0.28, 0, 50); tone(1100, 0.07, 'sine', 0.14, 0, 400); noise(0.12, 0.25, 0, 'bandpass', 1800, 500); },
+  perfect: () => [523.25, 659.25, 783.99, 1046.5, 1318.51, 1568].forEach((f, i) => tone(f, 0.32, 'sine', 0.16, i * 0.07)),
 };
 const buzz = pattern => { if (soundOn && navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) {} } };
 
@@ -1627,7 +1639,6 @@ function toggleSound() {
   try { localStorage.setItem('bp-sound', soundOn ? '1' : '0'); } catch (e) {}
   renderSound();
   sfx.tick();
-  syncMusic();
 }
 $('soundbtn').addEventListener('click', toggleSound);
 renderSound();
@@ -1638,51 +1649,6 @@ function applyTheme(t, persist = true) {
   document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'light' ? '#f3f4f8' : '#0e1016');
 }
 applyTheme(document.documentElement.dataset.theme || 'dark', false);
-
-// ---- background music ----
-// Plays through the same audio context as the effects so the volume works on iPhones too (they ignore audio.volume).
-let musicOn = true, musicVol = 0.3;
-try { musicOn = localStorage.getItem('bp-music') !== '0'; const v = +localStorage.getItem('bp-musicvol'); if ([0.15, 0.3, 0.5].includes(v)) musicVol = v; } catch (e) {}
-let musicEl = null, musicGain = null;
-const musicWanted = () => soundOn && musicOn && !document.hidden;
-function fadeMusic(v) {
-  if (musicGain && actx) { const t = actx.currentTime; musicGain.gain.cancelScheduledValues(t); musicGain.gain.setTargetAtTime(v, t, 0.35); }
-  else if (musicEl) musicEl.volume = v;
-}
-function startMusic() {
-  if (!musicWanted()) return;
-  const a = audio();
-  if (!a) return;
-  if (!musicEl) {
-    musicEl = new Audio('/music/lofi-vinyl-teapot.mp3');
-    musicEl.loop = true;
-    try {
-      const src = a.createMediaElementSource(musicEl);
-      musicGain = a.createGain(); musicGain.gain.value = 0;
-      src.connect(musicGain); musicGain.connect(a.destination);
-    } catch (e) { musicGain = null; musicEl.volume = 0; }
-  }
-  musicEl.play().then(() => fadeMusic(musicVol)).catch(() => {});
-}
-function stopMusic() {
-  if (!musicEl) return;
-  fadeMusic(0);
-  setTimeout(() => { if (!musicWanted() && musicEl) musicEl.pause(); }, 900);
-}
-const syncMusic = () => (musicWanted() ? startMusic() : stopMusic());
-function toggleMusic() {
-  musicOn = !musicOn;
-  try { localStorage.setItem('bp-music', musicOn ? '1' : '0'); } catch (e) {}
-  syncMusic();
-}
-function setMusicVol(v) {
-  musicVol = v;
-  try { localStorage.setItem('bp-musicvol', v); } catch (e) {}
-  if (musicWanted()) fadeMusic(v);
-}
-document.addEventListener('visibilitychange', syncMusic);
-// browsers only allow sound after a tap, so music begins with the first touch
-document.addEventListener('pointerdown', syncMusic, { once: true, capture: true });
 
 // ---- toast and unlocks ----
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show'); }
@@ -1737,8 +1703,7 @@ function renderSettings() {
   const keep = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
   row('Theme', '', seg([['dark', 'Dark'], ['light', 'Light']], document.documentElement.dataset.theme, applyTheme));
   row('Sound and vibration', '', sw(soundOn, toggleSound));
-  row('Music', '', sw(musicOn, toggleMusic));
-  row('Music volume', '', seg([[0.15, 'Low'], [0.3, 'Medium'], [0.5, 'High']], musicVol, setMusicVol));
+  row('Sound volume', '', seg([[1.4, 'Normal'], [2.2, 'Loud'], [3.2, 'Max']], sfxVol, v => { sfxVol = v; keep('bp-sfxvol', v); sfx.clear(2, 1); }));
   row('Colour-blind marks', 'Adds a shape to each colour', sw(cbMode, () => { cbMode = !cbMode; keep('bp-cb', cbMode ? '1' : '0'); document.body.classList.toggle('cb', cbMode); render(); }));
   row('Drag height', 'How far a piece floats above your finger', seg([[20, 'Low'], [40, 'Medium'], [70, 'High']], LIFT, v => { LIFT = v; keep('bp-lift', v); }));
   row('Left-handed layout', 'Moves the buttons to the left', sw(lefty, () => { lefty = !lefty; keep('bp-lefty', lefty ? '1' : '0'); document.body.classList.toggle('lefty', lefty); }));
@@ -1759,9 +1724,6 @@ function renderSettings() {
   const hb = document.createElement('button'); hb.className = 'ghostbtn'; hb.textContent = 'How to play';
   hb.addEventListener('click', () => $('help').classList.add('show'));
   body.appendChild(hb);
-  const cr = document.createElement('p'); cr.className = 'credits';
-  cr.textContent = 'Music: “Lofi Vinyl Teapot” by Ornave, from Pixabay (Pixabay Content License).';
-  body.appendChild(cr);
 }
 $('settingsbtn').addEventListener('click', () => { renderSettings(); $('settings').classList.add('show'); });
 $('settingsclose').addEventListener('click', () => $('settings').classList.remove('show'));
