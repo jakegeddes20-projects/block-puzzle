@@ -307,6 +307,22 @@
   #modebar .mini.ghost { background: var(--raised); color: var(--text); }
   #board.lining { cursor: crosshair; }
   .bottomrow.hasnext .tool { width: 38px; }
+  #progtabs, #lbtabs { margin: 12px auto 4px; width: max-content; }
+  #ptab-missions, #ptab-badges { text-align: left; margin-top: 10px; }
+  .mhead { margin: 14px 0 6px; color: var(--muted); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; display: flex; justify-content: space-between; }
+  .mission { padding: 10px 12px; border-radius: 14px; background: var(--raised); margin-bottom: 6px; }
+  .mission .top { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; font-weight: 600; }
+  .mission .rw { display: flex; align-items: center; gap: 4px; color: var(--accent-text); font-weight: 800; font-size: 13px; flex: none; }
+  .mission.done { opacity: .6; }
+  .mission.done .top span:first-child::after { content: ' \2713'; color: var(--accent-text); }
+  .bar { height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--text) 10%, transparent); margin-top: 8px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+  .badges { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .badge { padding: 10px 12px; border-radius: 14px; background: var(--raised); }
+  .badge b { display: block; font-size: 14px; font-weight: 700; }
+  .badge small { display: block; color: var(--muted); font-size: 11.5px; line-height: 1.3; margin-top: 2px; }
+  .badge.locked { opacity: .45; }
+  .badge .rw { color: var(--accent-text); font-weight: 800; font-size: 11.5px; margin-top: 4px; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important; } }
 </style>
 </head>
@@ -365,7 +381,9 @@
   <button id="adcancel" class="ghostbtn">Cancel</button>
 </div></div>
 <div id="lbo"><div class="card">
-  <h2>Daily leaderboard</h2><p id="lbday"></p>
+  <h2>Leaderboard</h2>
+  <div id="lbtabs" class="mini-seg"><button id="lbtd" class="on">Daily</button><button id="lbtw">Weekly</button></div>
+  <p id="lbday"></p>
   <ol id="lbl"></ol>
   <p id="whoami"></p>
   <button id="changename" class="ghostbtn">Change name</button>
@@ -391,9 +409,11 @@
   <button id="sheetclose" class="ghostbtn">Close</button>
 </div></div>
 <div id="stats"><div class="card">
-  <h2>Your stats</h2>
-  <div id="streakline" class="streakline"></div>
-  <div id="tiles" class="tiles"></div>
+  <h2>Progress</h2>
+  <div id="progtabs" class="mini-seg"><button data-tab="stats" class="on">Stats</button><button data-tab="missions">Missions</button><button data-tab="badges">Badges</button></div>
+  <div id="ptab-stats"><div id="streakline" class="streakline"></div><div id="tiles" class="tiles"></div></div>
+  <div id="ptab-missions" hidden></div>
+  <div id="ptab-badges" hidden></div>
   <button id="statsclose" class="ghostbtn">Close</button>
 </div></div>
 <div id="settings"><div class="card left">
@@ -429,7 +449,7 @@ const SZ = () => (mode === 'crazy' ? 'c-' : '') + (N === 8 ? '' : N + '-');
 const COLORS = ['#ff6b81', '#ffb938', '#3fd9a0', '#4cc3ff', '#a07bff', '#ff8f4d'];   // base colours: what pieces and saves store
 
 // ---- stats and unlocks ----
-const stats = { games: 0, lines: 0, bestCombo: 0, bestClear: 0, perfects: 0, topScore: 0, streak: 0, bestStreak: 0, lastDaily: '', solved: {}, booms: 0 };
+const stats = { games: 0, lines: 0, bestCombo: 0, bestClear: 0, perfects: 0, topScore: 0, streak: 0, bestStreak: 0, lastDaily: '', solved: {}, booms: 0, weeklyRuns: 0, challengeWins: 0, purchases: 0 };
 try { Object.assign(stats, JSON.parse(localStorage.getItem('bp-stats')) || {}); } catch (e) {}
 // ---- coins and tools ----
 const TOOLS = ['undo', 'hint', 'remove', 'shuffle', 'line', 'freeze'];
@@ -613,15 +633,46 @@ const DIFF = {
 };
 DIFF.daily.tools = false;   // the Daily is pure skill: no undo, hint, remove or power-ups
 // the rules in force right now (later levels add their own through this one place)
-const cfg = () => DIFF[diff];
+DIFF.weekly = { label: 'Weekly', preview: 0, safe: false, mult: 1, tools: false, seeded: true };
+DIFF.daily.seeded = true;
+const cfg = () => (diff === 'weekly' ? { ...DIFF.weekly, ...weeklyMod() } : DIFF[diff]);
 const noTools = () => cfg().tools === false;
+
+// ---- weeks (Monday to Sunday, UTC) ----
+function isoWeek(dstr) {
+  const d = new Date(Date.parse(dstr + 'T00:00:00Z'));
+  const day = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - day + 3);
+  const week1 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  const wk = 1 + Math.round(((d - week1) / 864e5 - 3 + ((week1.getUTCDay() + 6) % 7)) / 7);
+  return d.getUTCFullYear() + '-W' + String(wk).padStart(2, '0');
+}
+const weekNum = () => Math.floor((Date.parse(new Date().toISOString().slice(0, 10) + 'T00:00:00Z') / 864e5 + 3) / 7);
+// the weekly challenge: one rule set for everyone, rotating each week
+const WEEKLY_MODS = [
+  { id: 'storm', name: 'Bomb Storm', desc: 'Crazy 8×8 where nearly every third piece hides a bomb.', N: 8, mode: 'crazy', preview: 1, bomb: 0.38 },
+  { id: 'blind', name: 'Blind Week', desc: 'Classic 8×8 with no preview at all.', N: 8, mode: 'classic', preview: 0 },
+  { id: 'mini', name: 'Mini Week', desc: 'A tight 6×6 board with classic pieces.', N: 6, mode: 'classic', preview: 1 },
+  { id: 'mega', name: 'Mega Blast', desc: 'Crazy 10×10 where bomb blasts are half as big again.', N: 10, mode: 'crazy', preview: 1, bomb: 0.2, blast: 1.5 },
+  { id: 'rush', name: 'Rush Week', desc: 'Classic 8×8 against a 90 second clock.', N: 8, mode: 'classic', preview: 1, time: 90 },
+  { id: 'wild', name: 'Wild Week', desc: 'Crazy 12×12 with plenty of bombs.', N: 12, mode: 'crazy', preview: 1, bomb: 0.2 },
+];
+const weeklyMod = () => WEEKLY_MODS[weekNum() % WEEKLY_MODS.length];
+// boards the game forces on the player: puzzles are 8x8 classic, the weekly follows its modifier
+const forcedFor = k => (k === 'puzzle' ? { N: 8, mode: 'classic' } : k === 'weekly' ? { N: weeklyMod().N, mode: weeklyMod().mode } : null);
+const isForced = () => !!forcedFor(diff);
 
 // ---- daily mode: pieces come from a generator seeded with today's date (UTC) ----
 const today = () => new Date().toISOString().slice(0, 10);
 let rs = 0;   // generator state, saved with the game so a daily can be resumed
 function seedFor(date) { let h = 2166136261; for (const ch of 'bp-' + date) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h | 0; }
+let curSeed = 0;   // where this game's piece sequence started, so a friend can play the same pieces
+function gameSeed() {
+  if (diff === 'daily') return seedFor(SZ() + today());
+  if (diff === 'weekly') return seedFor('W' + isoWeek(today()) + weeklyMod().id);
+  return (Math.random() * 4294967296) | 0;
+}
 function rand() {
-  if (diff !== 'daily') return Math.random();
   rs = (rs + 0x6D2B79F5) | 0;   // mulberry32
   let t = Math.imul(rs ^ (rs >>> 15), 1 | rs);
   t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
@@ -629,13 +680,15 @@ function rand() {
 }
 const sizeTag = () => (mode === 'crazy' ? ' Crazy' : '') + (N === 8 ? '' : ' ' + N + '\u00d7' + N);
 const dailyKey = () => 'bp-daily-' + SZ() + today();
+const weeklyKey = () => 'bp-weekly-' + isoWeek(today()) + '-' + weeklyMod().id;
+function weeklyResult() { try { const v = localStorage.getItem(weeklyKey()); return v === null ? null : +v; } catch (e) { return null; } }
 function dailyResult() { try { const v = localStorage.getItem(dailyKey()); return v === null ? null : +v; } catch (e) { return null; } }
 let grid, pieces, nextPieces, score, best, combo = 0, diff = 'medium';
 let locked = false;   // true once a game is over (or today's daily is used up): nothing can be placed
 try { const d = localStorage.getItem('bp-diff'); if (DIFF[d]) diff = d; } catch (e) {}
 // puzzles are always 8x8 classic; remember the board the player had so leaving puzzles restores it
 let prePuzzle = null;
-if (diff === 'puzzle') { prePuzzle = { N, mode }; N = 8; mode = 'classic'; document.documentElement.style.setProperty('--n', N); }
+if (forcedFor(diff)) { const f = forcedFor(diff); prePuzzle = { N, mode }; N = f.N; mode = f.mode; document.documentElement.style.setProperty('--n', N); }
 // one-time reset: Medium and Hard bests were earned with the old x1.5 / x2 multipliers
 try {
   if (localStorage.getItem('bp-scoring') !== '2') {
@@ -652,21 +705,22 @@ const boardEl = $('board'), trayEl = $('tray'), ghostEl = $('ghost');
 // In Crazy, about 1 piece in 7 hides a bomb in one of its cells. It only shows once the piece is on the board.
 // The choice is made when the piece is dealt, so the daily still gives everyone identical pieces.
 const BOMB_CHANCE = 0.14;
+const bombChance = () => (cfg().bomb !== undefined ? cfg().bomb : BOMB_CHANCE);
 function newPiece() {
   const p = { shape: anyShape(), color: COLORS[Math.floor(rand() * COLORS.length)] };
-  if (mode === 'crazy') { const a = rand(), b = rand(); p.bomb = a < BOMB_CHANCE ? Math.floor(b * cellsOf(p.shape)) : -1; }
+  if (mode === 'crazy') { const a = rand(), b = rand(); p.bomb = a < bombChance() ? Math.floor(b * cellsOf(p.shape)) : -1; }
   return p;
 }
-const blastRadius = () => N / 4;   // cells destroyed around a bomb: 9, 13, 21, 29 for 6x6, 8x8, 10x10, 12x12
+const blastRadius = () => (N / 4) * (cfg().blast || 1);   // cells destroyed around a bomb: 9, 13, 21, 29 for 6x6, 8x8, 10x10, 12x12
 const newHand = () => [newPiece(), newPiece(), newPiece()];
 // The next hand is generated one hand ahead so it can be previewed.
 function dealPieces() {
   pieces = nextPieces || newHand();
   nextPieces = newHand();
   // crazy (not the daily, where everyone must get identical pieces): swap out any piece that cannot fit anywhere
-  if (mode === 'crazy' && diff !== 'daily') pieces = pieces.map(p => (canPlaceAnywhere(p.shape) ? p : { ...p, shape: fitShape() }));
+  if (mode === 'crazy' && !cfg().seeded) pieces = pieces.map(p => (canPlaceAnywhere(p.shape) ? p : { ...p, shape: fitShape() }));
   // medium and hard: guarantee at least one piece in the hand can be placed
-  const safe = DIFF[diff].safe;
+  const safe = cfg().safe;
   if (safe && !pieces.some(p => canPlaceAnywhere(p.shape))) {
     // crazy has no fixed list: try a batch of fresh shapes, with the single block as the last resort
     const ok = (mode === 'crazy' ? Array.from({ length: 60 }, crazyShape).concat([[[1]]]) : SHAPES).filter(canPlaceAnywhere);
@@ -940,6 +994,7 @@ function place(idx, r, c) {
   if (diff === 'puzzle') score = gameLines; else score += gain;
   saveStats();
   checkUnlocks();
+  trackMove(lines, booms, perfect);
   if (diff === 'puzzle') { render(); feedback(lines, gain, perfect, booms); checkPuzzle(); return; }
   if (pieces.every(x => !x)) dealPieces();
   render();
@@ -950,10 +1005,10 @@ function place(idx, r, c) {
 
 // ---- each difficulty keeps its own game in progress (Timed and Puzzle always start fresh) ----
 const saveKey = () => 'bp-save-' + SZ() + diff;
-const noSave = () => diff === 'puzzle' || !!DIFF[diff].time;
+const noSave = () => diff === 'puzzle' || !!cfg().time;
 function saveGame() {
   if (noSave()) return;
-  try { localStorage.setItem(saveKey(), JSON.stringify({ grid, pieces, nextPieces, score, combo, rs, date: today(), gameLines, gameCombo, undosLeft, hintsLeft, hammersLeft, bombs: [...bombs] })); } catch (e) {}
+  try { localStorage.setItem(saveKey(), JSON.stringify({ grid, pieces, nextPieces, score, combo, rs, date: today(), week: isoWeek(today()), curSeed, gameLines, gameCombo, undosLeft, hintsLeft, hammersLeft, bombs: [...bombs] })); } catch (e) {}
 }
 function clearSave() { try { localStorage.removeItem(saveKey()); } catch (e) {} }
 function loadGame() {
@@ -962,6 +1017,8 @@ function loadGame() {
     const s = JSON.parse(localStorage.getItem(saveKey()));
     if (!s || s.grid.length !== N || s.pieces.length !== 3 || s.nextPieces.length !== 3) return false;
     if (diff === 'daily' && s.date !== today()) return false;   // yesterday's daily is over
+    if (diff === 'weekly' && s.week !== isoWeek(today())) return false;   // last week's weekly is over
+    curSeed = s.curSeed | 0;
     ({ grid, pieces, nextPieces, score, combo } = s);
     rs = s.rs | 0;
     gameLines = s.gameLines | 0; gameCombo = s.gameCombo | 0;
@@ -1006,8 +1063,8 @@ function render() {
   paintScore();
   renderBoard(); renderTray(); renderNext(); renderDiff(); renderTools(); renderPuzzleBar();
   queueFit();
-  $('lbtop').hidden = diff !== 'daily';
-  $('lbtop').textContent = 'Daily leaderboard (' + (mode === 'crazy' ? 'Crazy ' : '') + N + '\u00d7' + N + ')';
+  $('lbtop').hidden = diff !== 'daily' && diff !== 'weekly';
+  $('lbtop').textContent = (diff === 'weekly' ? 'Weekly' : 'Daily') + ' leaderboard (' + (mode === 'crazy' ? 'Crazy ' : '') + N + '\u00d7' + N + ')';
 }
 function paintScore() {
   const puz = diff === 'puzzle';
@@ -1020,7 +1077,7 @@ function paintScore() {
 const fmtTime = t => { const n = Math.ceil(t); return Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0'); };
 function paintCombo() {
   const cb = $('combo');
-  if (DIFF[diff].time) {   // Timed shows the clock where the combo badge normally sits
+  if (cfg().time) {   // Timed shows the clock where the combo badge normally sits
     cb.style.visibility = 'visible';
     $('combolabel').textContent = 'Time';
     $('combon').textContent = fmtTime(timer.left);
@@ -1055,10 +1112,17 @@ function renderTools() {
   boardEl.classList.toggle('lining', lineArm === 'row' || lineArm === 'col');
 }
 function renderPuzzleBar() {
-  const bar = $('puzzlebar');
-  bar.hidden = diff !== 'puzzle';
-  if (diff !== 'puzzle') return;
-  $('pztitle').textContent = 'Puzzle ' + (puzzleIdx + 1) + ' of ' + PUZZLES.length + (stats.solved[puzzleIdx] ? ' \u00b7 Solved' : '');
+  const bar = $('puzzlebar'), weekly = diff === 'weekly';
+  bar.hidden = diff !== 'puzzle' && !weekly;
+  if (bar.hidden) return;
+  $('pzprev').style.visibility = $('pznext').style.visibility = weekly ? 'hidden' : 'visible';
+  if (weekly) {
+    const best = weeklyResult();
+    $('pztitle').textContent = 'Weekly · ' + weeklyMod().name;
+    $('pzgoal').textContent = best === null ? 'Same pieces for everyone this week' : 'Your best this week: ' + best;
+    return;
+  }
+  $('pztitle').textContent = 'Puzzle ' + (puzzleIdx + 1) + ' of ' + PUZZLES.length + (stats.solved[puzzleIdx] ? ' · Solved' : '');
   $('pzgoal').textContent = 'Clear ' + PUZZLES[puzzleIdx].g + ' lines using these pieces';
 }
 
@@ -1077,7 +1141,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) pause
 
 function renderNext() {
   const el = $('next');
-  const shown = DIFF[diff].preview;
+  const shown = cfg().preview;
   el.hidden = shown === 0;
   $('bottomrow').classList.toggle('hasnext', shown > 0);
   el.innerHTML = '<small>Next</small>';
@@ -1098,13 +1162,15 @@ const SUBS = {
   easy: () => '3 ahead', medium: () => '1 ahead', hard: () => 'blind', timed: () => '2:00',
   daily: () => new Date(today() + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) + (streakNow() >= 2 ? ' \u00b7 ' + streakNow() + 'd streak' : ''),
   puzzle: () => 'No. ' + (puzzleIdx + 1),
+  weekly: () => weeklyMod().name,
 };
 const DESCS = {
   easy: 'See all 3 of your next pieces', medium: 'See 1 of your next pieces',
   hard: 'No preview, you play blind', daily: 'Same pieces for everyone, one go a day',
   timed: '2 minutes, score as much as you can', puzzle: 'Hand-made puzzles with fixed pieces and a goal',
+  weekly: () => weeklyMod().desc + ' Play as often as you like, your best counts.',
 };
-const DOTS = { easy: '#3fd9a0', medium: '#ffb938', hard: '#ff6b81', timed: '#a07bff', daily: '#4cc3ff', puzzle: '#ff8f4d' };
+const DOTS = { weekly: '#c77dff', easy: '#3fd9a0', medium: '#ffb938', hard: '#ff6b81', timed: '#a07bff', daily: '#4cc3ff', puzzle: '#ff8f4d' };
 const CHEV = '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 const TICK = '<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
 const SIZE_DESCS = { 6: 'Tight and tricky', 8: 'The classic', 10: 'Roomier, longer games', 12: 'Big board, long runs' };
@@ -1137,20 +1203,20 @@ function renderDiff() {
   $('diff').innerHTML = '';
   picker('level',
     '<span class="lv"><i class="dot" style="background:' + DOTS[diff] + '"></i><b>' + DIFF[diff].label + '</b><small>' + SUBS[diff]() + '</small></span>',
-    Object.keys(DIFF).map(k => ({ label: DIFF[k].label, desc: DESCS[k], dot: DOTS[k], on: k === diff, pick: () => setDiff(k) })));
+    Object.keys(DIFF).map(k => ({ label: DIFF[k].label, desc: typeof DESCS[k] === 'function' ? DESCS[k]() : DESCS[k], dot: DOTS[k], on: k === diff, pick: () => setDiff(k) })));
   picker('mode',
     '<span class="lv"><b>' + (mode === 'crazy' ? 'Crazy' : 'Classic') + '</b></span>',
     ['classic', 'crazy'].map(m => ({ label: m === 'crazy' ? 'Crazy' : 'Classic', desc: MODE_DESCS[m], on: m === mode, pick: () => setMode(m) })),
-    diff === 'puzzle');
+    isForced());
   picker('size',
     '<span class="lv"><b>' + N + '\u00d7' + N + '</b></span>',
     SIZES.map(z => ({ label: z + '\u00d7' + z, desc: SIZE_DESCS[z], on: z === N, pick: () => setSize(z) })),
-    diff === 'puzzle');   // puzzles are always 8x8
+    isForced());   // puzzles and the weekly set the board themselves
 }
 const MODE_DESCS = { classic: 'The original pieces', crazy: 'Wild shapes sized to the board' };
 // like board size, each mode keeps its own game in progress, bests, daily and leaderboard
 function setMode(m) {
-  if (m === mode || diff === 'puzzle') return;
+  if (m === mode || isForced()) return;
   clearSel();
   mode = m;
   fx = [];
@@ -1165,15 +1231,16 @@ function setDiff(k) {
   if (k === diff) return;
   clearSel();
   hint = null;
-  if (k === 'puzzle') { prePuzzle = { N, mode }; N = 8; mode = 'classic'; applySize(); }
-  else if (diff === 'puzzle' && prePuzzle) { N = prePuzzle.N; mode = prePuzzle.mode; prePuzzle = null; applySize(); }
+  const f = forcedFor(k);
+  if (f) { if (!prePuzzle) prePuzzle = { N, mode }; N = f.N; mode = f.mode; applySize(); }
+  else if (prePuzzle) { N = prePuzzle.N; mode = prePuzzle.mode; prePuzzle = null; applySize(); }
   diff = k;
   try { localStorage.setItem('bp-diff', k); } catch (e) {}
   start();
 }
 // each board size keeps its own game in progress, bests and daily, like each level does
 function setSize(z) {
-  if (z === N || diff === 'puzzle') return;
+  if (z === N || isForced()) return;
   clearSel();
   N = z;
   fx = [];
@@ -1197,7 +1264,7 @@ function loadPuzzle(i) {
 function checkPuzzle() {
   const goal = PUZZLES[puzzleIdx].g, left = pieces.filter(Boolean);
   if (gameLines >= goal) {
-    locked = true; if (!stats.solved[puzzleIdx]) addCoins(20); stats.solved[puzzleIdx] = 1; saveStats(); sfx.perfect();
+    locked = true; if (!stats.solved[puzzleIdx]) { addCoins(20); track('puzzles', 1); } stats.solved[puzzleIdx] = 1; saveStats(); checkMissions(); checkAchievements(); sfx.perfect();
     setTimeout(() => { if (locked && diff === 'puzzle') showCard('Solved!', gameLines + ' / ' + goal + ' lines', '', 'Nice. On to the next one?', 'solved'); }, 600);
     render();
   } else if (!left.length || !left.some(p => canPlaceAnywhere(p.shape))) {
@@ -1213,7 +1280,8 @@ $('pznext').addEventListener('click', () => { loadPuzzle(puzzleIdx + 1); reset()
 const EMOJI = { '#ff6b81': '\ud83d\udfe5', '#ffb938': '\ud83d\udfe8', '#3fd9a0': '\ud83d\udfe9', '#4cc3ff': '\ud83d\udfe6', '#a07bff': '\ud83d\udfea', '#ff8f4d': '\ud83d\udfe7' };
 const SITE = 'https://block-puzzle-two.vercel.app';
 function buildShare(value, board) {
-  const head = diff === 'daily' ? 'Block Puzzle 2 Daily' + sizeTag() + ' ' + today()
+  const head = diff === 'weekly' ? 'Block Puzzle 2 Weekly \u00b7 ' + weeklyMod().name + ' ' + isoWeek(today())
+    : diff === 'daily' ? 'Block Puzzle 2 Daily' + sizeTag() + ' ' + today()
     : 'Block Puzzle 2 \u00b7 ' + DIFF[diff].label + (mode === 'crazy' ? ' Crazy' : '') + ' ' + N + '\u00d7' + N;
   const art = board ? '\n' + board.map(r => r.map(c => (c ? EMOJI[c] || '\u2b1b' : '\u2b1c')).join('')).join('\n') : '';
   const streak = streakNow() >= 2 && diff === 'daily' ? '\n' + streakNow() + ' day streak' : '';
@@ -1242,14 +1310,26 @@ function gameOver(reason) {
   let earned = coinsFor(score, gameLines);
   if (diff === 'daily' && dailyResult() === null) earned += 40;   // first Daily of the day
   addCoins(earned);
+  const firstDaily = diff === 'daily' && dailyResult() === null;
   if (diff === 'daily') updateStreak();
   saveStats();
   checkUnlocks();
+  trackGameEnd(firstDaily);
   const gap = prevBest - score;
   const newbest = isBest ? 'New best!' : gap <= Math.max(10, prevBest * 0.1) ? 'So close! Just ' + gap + ' short of your best.' : 'Best ' + best;
   const extra = gameLines + (gameLines === 1 ? ' line' : ' lines') + ' cleared' + (gameCombo >= 2 ? ' \u00b7 best combo \u00d7' + gameCombo : '') + ' \u00b7 +' + earned + ' coins';
   const title = reason === 'time' ? 'Time up' : 'Game over';
-  if (diff === 'daily') {
+  if (diff === 'weekly') {
+    const prevW = weeklyResult(), topW = prevW === null ? score : Math.max(prevW, score);
+    try { localStorage.setItem(weeklyKey(), topW); } catch (e) {}
+    if (prevW === null) { addCoins(50); stats.weeklyRuns++; saveStats(); extraWeekly = ' \u00b7 +50 coins for your first run this week'; } else extraWeekly = '';
+    shareText = buildShare(topW, grid);
+    setTimeout(() => {
+      if (!locked || diff !== 'weekly') return;
+      showCard(title, 'Score ' + score, newbest, 'Weekly best: ' + topW + '. Play again as often as you like.', 'weekly', extra + extraWeekly);
+      submitScore(true, 'weekly');
+    }, 500);
+  } else if (diff === 'daily') {
     // everyone gets one go; the best of any extra goes (bought with an ad) is the day's score
     const prev = dailyResult();
     const top = prev === null ? score : Math.max(prev, score);
@@ -1269,6 +1349,7 @@ function gameOver(reason) {
   render();
 }
 
+let extraWeekly = '';
 let againMode = 'reset';   // what the main button on the card does
 function showCard(title, final, newbest, note, kind, extra) {
   $('otitle').textContent = title;
@@ -1278,14 +1359,15 @@ function showCard(title, final, newbest, note, kind, extra) {
   $('gostats').hidden = !extra;
   $('dailynote').textContent = note;
   $('dailynote').hidden = !note;
-  const daily = kind === 'daily';
+  const daily = kind === 'daily', weekly = kind === 'weekly';
   againMode = kind === 'solved' ? 'next' : kind === 'failed' ? 'retry' : 'reset';
   $('again').hidden = daily;
-  $('again').textContent = kind === 'solved' ? 'Next puzzle' : kind === 'failed' ? 'Retry' : 'Play again';
+  $('again').textContent = kind === 'solved' ? 'Next puzzle' : kind === 'failed' ? 'Retry' : weekly ? 'Try again' : 'Play again';
   $('adbtn').hidden = !daily || adsLeft() === 0;
   $('adbtn').textContent = 'Watch ad for another go (' + adsLeft() + ' left)';
-  $('lbbtn').hidden = !daily;
-  $('share').hidden = !(daily || kind === 'normal');
+  $('lbbtn').hidden = !(daily || weekly);
+  $('lbbtn').dataset.board = weekly ? 'weekly' : 'daily';
+  $('share').hidden = !(daily || weekly || kind === 'normal');
   $('share').textContent = 'Share';
   $('over').classList.add('show');
 }
@@ -1484,7 +1566,7 @@ function openShop(focus) { renderShop(); $('shop').classList.add('show'); if (fo
 function closeShop() { $('shop').classList.remove('show'); }
 function buy(t, qty, cost) {
   if (wallet.coins < cost) return;
-  wallet.coins -= cost; wallet.inv[t] += qty;
+  wallet.coins -= cost; wallet.inv[t] += qty; stats.purchases++; saveStats(); checkAchievements();
   saveWallet(); paintCoins(); sfx.tick(); renderShop(); renderTools();
 }
 function renderShop() {
@@ -1585,14 +1667,14 @@ function reset(save = true) {
   stopTimer();
   hint = null; history = null; bombs = new Set();
   undosLeft = 1; hintsLeft = 1; hammersLeft = 1; hammerMode = false; lineArm = null; hideModebar(); gameLines = 0; gameCombo = 0;
-  timer.left = DIFF[diff].time || 0;
+  timer.left = cfg().time || 0;
   loadBest();
   $('over').classList.remove('show');
   if (diff === 'puzzle') { loadPuzzle(puzzleIdx); render(); return; }
   grid = Array.from({ length: N }, () => Array(N).fill(null));
   score = 0;
   combo = 0;
-  rs = seedFor(SZ() + today());   // only used by the daily; every board size gets its own pieces
+  curSeed = gameSeed(); rs = curSeed;   // the daily and weekly are the same for everyone; other games start from a random seed
   nextPieces = null;
   dealPieces();
   render();
@@ -1627,6 +1709,7 @@ function playerId() {
 }
 let nick = '';
 try { nick = localStorage.getItem('bp-nick') || ''; } catch (e) {}
+let lbBoard = 'daily';   // 'daily' | 'weekly'
 let lbRows = [], lbYou = null, lbDay = today(), lbState = 'loading';   // loading | ok | down
 
 async function api(path, body) {
@@ -1637,20 +1720,23 @@ async function api(path, body) {
 }
 async function loadLb() {
   try {
-    const d = await api('/api/top', { id: playerId(), size: N, mode });
-    lbRows = d.rows; lbYou = d.you; lbDay = d.day; lbState = 'ok';
+    const w = lbBoard === 'weekly';
+    const d = await api('/api/top', { id: playerId(), size: w ? weeklyMod().N : N, mode: w ? weeklyMod().mode : mode, board: lbBoard });
+    lbRows = d.rows; lbYou = d.you; lbDay = d.period || d.day; lbState = 'ok';
   } catch (e) { lbState = 'down'; }
   renderLb();
 }
 function renderLb() {
   const ol = $('lbl');
   ol.innerHTML = '';
-  $('lbday').textContent = (mode === 'crazy' ? 'Crazy ' : '') + N + '\u00d7' + N + ' \u00b7 ' + lbDay + ' (UTC)';
+  const wk = lbBoard === 'weekly', bn = wk ? weeklyMod().N : N, bm = wk ? weeklyMod().mode : mode;
+  $('lbday').textContent = (wk ? weeklyMod().name + ' \u00b7 ' : '') + (bm === 'crazy' ? 'Crazy ' : '') + bn + '\u00d7' + bn + ' \u00b7 ' + lbDay + (wk ? '' : ' (UTC)');
+  $('lbtd').classList.toggle('on', !wk); $('lbtw').classList.toggle('on', wk);
   $('whoami').textContent = nick ? 'Playing as ' + nick : 'You have no name yet.';
   const none = text => { const li = document.createElement('li'); li.className = 'none'; li.textContent = text; ol.appendChild(li); };
   if (lbState === 'loading') return none('Loading...');
   if (lbState === 'down') return none('The leaderboard is not available right now.');
-  if (!lbRows.length) return none('No scores yet today. Be the first.');
+  if (!lbRows.length) return none(lbBoard === 'weekly' ? 'No scores yet this week. Be the first.' : 'No scores yet today. Be the first.');
   const row = (r) => {
     const li = document.createElement('li');
     if (r.me) li.className = 'me';
@@ -1663,20 +1749,22 @@ function renderLb() {
   lbRows.forEach(row);
   if (lbYou && !lbRows.some(r => r.me)) row({ rank: lbYou.rank, name: nick || 'You', score: lbYou.score, me: true });
 }
-async function openLb() {
+async function openLb(board) {
+  lbBoard = board === 'weekly' || board === 'daily' ? board : (diff === 'weekly' ? 'weekly' : 'daily');
   lbState = 'loading';
   $('lbstatus').textContent = '';
   renderLb();
   $('lbo').classList.add('show');
-  await submitScore(false);   // make sure today's score is on the board, then show it
+  await submitScore(false, lbBoard);   // make sure the score is on the board, then show it
   loadLb();
 }
 // sends today's best score; with promptName, asks for a username first if the player has none
-async function submitScore(promptName) {
-  const mine = dailyResult();
+async function submitScore(promptName, board) {
+  board = board === 'weekly' ? 'weekly' : 'daily';
+  const w = board === 'weekly', mine = w ? weeklyResult() : dailyResult();
   if (mine === null) return;
   if (!nick) { if (promptName) openName(false); return; }
-  try { await api('/api/score', { id: playerId(), score: mine, size: N, mode }); }
+  try { await api('/api/score', { id: playerId(), score: mine, size: w ? weeklyMod().N : N, mode: w ? weeklyMod().mode : mode, board }); }
   catch (e) {
     if (e.code === 'no_name') { nick = ''; openName(false); }   // the server lost this name; claim it again
     $('lbstatus').textContent = 'Could not send your score yet.';
@@ -1700,7 +1788,7 @@ async function saveName() {
     nick = d.name;
     try { localStorage.setItem('bp-nick', nick); } catch (e) {}
     $('nameo').classList.remove('show');
-    await submitScore(false);
+    await submitScore(false, lbBoard);
     if ($('lbo').classList.contains('show')) loadLb();
   } catch (e) {
     $('nameerr').textContent = e.code === 'taken' ? 'That name is taken. Try another.'
@@ -1713,8 +1801,10 @@ $('namesave').addEventListener('click', saveName);
 $('nameinput').addEventListener('keydown', e => { if (e.key === 'Enter') saveName(); });
 $('nameskip').addEventListener('click', () => $('nameo').classList.remove('show'));
 $('changename').addEventListener('click', () => openName(false));
-$('lbbtn').addEventListener('click', openLb);
-$('lbtop').addEventListener('click', openLb);
+$('lbbtn').addEventListener('click', () => openLb($('lbbtn').dataset.board));
+$('lbtop').addEventListener('click', () => openLb());
+$('lbtd').addEventListener('click', () => { lbBoard = 'daily'; lbState = 'loading'; renderLb(); loadLb(); });
+$('lbtw').addEventListener('click', () => { lbBoard = 'weekly'; lbState = 'loading'; renderLb(); loadLb(); });
 $('lbclose').addEventListener('click', () => $('lbo').classList.remove('show'));
 let shareText = '';
 $('share').addEventListener('click', async () => {
@@ -1915,20 +2005,143 @@ function checkUnlocks() {
   toast('Unlocked block style: ' + SKINS[fresh[0]].label + '. Pick it in Settings.');
 }
 
+// ---- missions and badges ----
+function rngFrom(seed) { let a = seed | 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const prog = { day: '', d: {}, dDone: {}, week: '', w: {}, wDone: {} };
+try { Object.assign(prog, JSON.parse(localStorage.getItem('bp-prog')) || {}); } catch (e) {}
+function saveProg() { try { localStorage.setItem('bp-prog', JSON.stringify(prog)); } catch (e) {} }
+function rollProg() {
+  const t = today(), w = isoWeek(t);
+  if (prog.day !== t) { prog.day = t; prog.d = {}; prog.dDone = {}; }
+  if (prog.week !== w) { prog.week = w; prog.w = {}; prog.wDone = {}; }
+}
+const MISSION_POOL = [
+  { id: 'lines', stat: 'lines', max: false, text: n => 'Clear ' + n + ' lines', day: [15, 25, 35], week: [100, 150, 200] },
+  { id: 'games', stat: 'games', max: false, text: n => 'Finish ' + n + ' games', day: [2, 3, 4], week: [10, 15, 20] },
+  { id: 'combo', stat: 'combo', max: true, text: n => 'Reach a combo of ×' + n, day: [3, 4, 5], week: [5, 6, 7] },
+  { id: 'multi', stat: 'multi', max: true, text: n => 'Clear ' + n + ' lines with one piece', day: [2, 3, 3], week: [3, 4, 4] },
+  { id: 'score', stat: 'score', max: true, text: n => 'Score ' + n + ' in one game', day: [300, 500, 800], week: [1000, 1500, 2000] },
+  { id: 'booms', stat: 'booms', max: false, text: n => 'Set off ' + n + (n === 1 ? ' bomb' : ' bombs') + ' (Crazy)', day: [1, 2, 3], week: [5, 8, 12] },
+  { id: 'puzzles', stat: 'puzzles', max: false, text: n => 'Solve ' + n + (n === 1 ? ' puzzle' : ' puzzles'), day: [1, 2, 2], week: [3, 5, 8] },
+  { id: 'dailies', stat: 'dailies', max: false, text: n => (n === 1 ? 'Finish today’s Daily' : 'Finish the Daily on ' + n + ' days'), day: [1, 1, 1], week: [3, 4, 5] },
+  { id: 'timed', stat: 'timedScore', max: true, text: n => 'Score ' + n + ' in Timed', day: [150, 250, 350], week: [300, 400, 500] },
+  { id: 'perfect', stat: 'perfects', max: false, text: n => 'Get ' + n + (n === 1 ? ' perfect clear' : ' perfect clears'), day: null, week: [1, 1, 2] },
+];
+const MISSION_REWARD = { day: [15, 20, 30], week: [60, 80, 110] };
+// three missions per period, the same for everyone, picked from the date or week
+function missionsFor(kind) {
+  rollProg();
+  const pool = MISSION_POOL.filter(m => m[kind]), rng = rngFrom(seedFor('missions-' + kind + '-' + (kind === 'day' ? prog.day : prog.week)));
+  const picks = [];
+  while (picks.length < 3 && pool.length) picks.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
+  return picks.map(m => {
+    const tier = Math.floor(rng() * 3), target = m[kind][tier], vals = kind === 'day' ? prog.d : prog.w, done = kind === 'day' ? prog.dDone : prog.wDone;
+    return { kind, m, target, reward: MISSION_REWARD[kind][tier], value: vals[m.stat] || 0, done: !!done[m.id] };
+  });
+}
+function track(stat, n) { rollProg(); prog.d[stat] = (prog.d[stat] || 0) + n; prog.w[stat] = (prog.w[stat] || 0) + n; }
+function trackMax(stat, v) { rollProg(); prog.d[stat] = Math.max(prog.d[stat] || 0, v); prog.w[stat] = Math.max(prog.w[stat] || 0, v); }
+function checkMissions() {
+  const msgs = [];
+  ['day', 'week'].forEach(kind => missionsFor(kind).forEach(x => {
+    if (x.done || x.value < x.target) return;
+    (kind === 'day' ? prog.dDone : prog.wDone)[x.m.id] = true;
+    addCoins(x.reward);
+    msgs.push(x.m.text(x.target) + ' (+' + x.reward + ')');
+  }));
+  if (msgs.length) { saveProg(); toast('Mission complete: ' + msgs.join(' · ')); }
+  else saveProg();
+}
+const BADGES = [
+  { id: 'first', name: 'First lines', desc: 'Clear your first line', reward: 5, test: () => stats.lines >= 1 },
+  { id: 'l100', name: 'Line cook', desc: 'Clear 100 lines', reward: 20, test: () => stats.lines >= 100 },
+  { id: 'l1000', name: 'Line legend', desc: 'Clear 1,000 lines', reward: 80, test: () => stats.lines >= 1000 },
+  { id: 'c5', name: 'On a roll', desc: 'Reach a combo of ×5', reward: 30, test: () => stats.bestCombo >= 5 },
+  { id: 'c8', name: 'Unstoppable', desc: 'Reach a combo of ×8', reward: 60, test: () => stats.bestCombo >= 8 },
+  { id: 'big4', name: 'Four at once', desc: 'Clear 4 lines with one piece', reward: 25, test: () => stats.bestClear >= 4 },
+  { id: 'perfect', name: 'Spotless', desc: 'Get a perfect clear', reward: 40, test: () => stats.perfects >= 1 },
+  { id: 'bomb10', name: 'Demolition', desc: 'Set off 10 bombs', reward: 30, test: () => stats.booms >= 10 },
+  { id: 'bomb50', name: 'Bomb squad', desc: 'Set off 50 bombs', reward: 80, test: () => stats.booms >= 50 },
+  { id: 's1000', name: 'Four figures', desc: 'Score 1,000 in a game', reward: 30, test: () => stats.topScore >= 1000 },
+  { id: 's3000', name: 'High roller', desc: 'Score 3,000 in a game', reward: 100, test: () => stats.topScore >= 3000 },
+  { id: 'g25', name: 'Regular', desc: 'Finish 25 games', reward: 30, test: () => stats.games >= 25 },
+  { id: 'g100', name: 'Devoted', desc: 'Finish 100 games', reward: 80, test: () => stats.games >= 100 },
+  { id: 'st3', name: 'Three days running', desc: 'A 3-day Daily streak', reward: 20, test: () => stats.bestStreak >= 3 },
+  { id: 'st7', name: 'A full week', desc: 'A 7-day Daily streak', reward: 60, test: () => stats.bestStreak >= 7 },
+  { id: 'p10', name: 'Puzzler', desc: 'Solve 10 puzzles', reward: 40, test: () => Object.keys(stats.solved).length >= 10 },
+  { id: 'p20', name: 'Puzzle master', desc: 'Solve all 20 puzzles', reward: 100, test: () => Object.keys(stats.solved).length >= 20 },
+  { id: 'weekly', name: 'Weekly warrior', desc: 'Finish a Weekly Challenge run', reward: 30, test: () => stats.weeklyRuns >= 1 },
+  { id: 'rival', name: 'Friendly rivalry', desc: 'Beat a friend’s challenge', reward: 25, test: () => stats.challengeWins >= 1 },
+  { id: 'shop', name: 'Shopper', desc: 'Buy something in the shop', reward: 10, test: () => stats.purchases >= 1 },
+];
+let ach = [];
+try { ach = JSON.parse(localStorage.getItem('bp-ach')) || []; } catch (e) {}
+function checkAchievements() {
+  const fresh = BADGES.filter(b => !ach.includes(b.id) && b.test());
+  if (!fresh.length) return;
+  fresh.forEach(b => { ach.push(b.id); addCoins(b.reward); });
+  try { localStorage.setItem('bp-ach', JSON.stringify(ach)); } catch (e) {}
+  toast('Badge unlocked: ' + fresh.map(b => b.name + ' (+' + b.reward + ')').join(' · '));
+}
+// call after anything that changes progress
+function trackMove(lines, booms, perfect) {
+  if (lines) { track('lines', lines); trackMax('multi', lines); trackMax('combo', combo); }
+  if (booms) track('booms', booms);
+  if (perfect) track('perfects', 1);
+  checkMissions(); checkAchievements();
+}
+function trackGameEnd(firstDaily) {
+  track('games', 1);
+  if (cfg().time) trackMax('timedScore', score); else trackMax('score', score);
+  if (firstDaily) track('dailies', 1);
+  checkMissions(); checkAchievements();
+}
+
 // ---- stats ----
 const FLAME = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/></svg>';
+let progTab = 'stats';
 function renderStats() {
-  const n = streakNow();
-  $('streakline').innerHTML = FLAME + '<span>' + n + ' day streak</span><small>best ' + stats.bestStreak + '</small>';
-  const tiles = [
-    ['Games played', stats.games], ['Best score', stats.topScore], ['Lines cleared', stats.lines], ['Best combo', '\u00d7' + stats.bestCombo],
-    ['Biggest clear', stats.bestClear + (stats.bestClear === 1 ? ' line' : ' lines')], ['Perfect clears', stats.perfects],
-    ['Puzzles solved', Object.keys(stats.solved).length + '/' + PUZZLES.length], ['Bombs set off', stats.booms],
-  ];
-  const el = $('tiles');
-  el.innerHTML = '';
-  tiles.forEach(([k, v]) => { const d = document.createElement('div'); d.className = 'tile'; d.innerHTML = '<small></small><b></b>'; d.firstChild.textContent = k; d.lastChild.textContent = v; el.appendChild(d); });
+  document.querySelectorAll('#progtabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === progTab));
+  ['stats', 'missions', 'badges'].forEach(t => { $('ptab-' + t).hidden = t !== progTab; });
+  if (progTab === 'stats') {
+    const n = streakNow();
+    $('streakline').innerHTML = FLAME + '<span>' + n + ' day streak</span><small>best ' + stats.bestStreak + '</small>';
+    const tiles = [
+      ['Games played', stats.games], ['Best score', stats.topScore], ['Lines cleared', stats.lines], ['Best combo', '×' + stats.bestCombo],
+      ['Biggest clear', stats.bestClear + (stats.bestClear === 1 ? ' line' : ' lines')], ['Perfect clears', stats.perfects],
+      ['Puzzles solved', Object.keys(stats.solved).length + '/' + PUZZLES.length], ['Bombs set off', stats.booms],
+    ];
+    const el = $('tiles');
+    el.innerHTML = '';
+    tiles.forEach(([k, v]) => { const d = document.createElement('div'); d.className = 'tile'; d.innerHTML = '<small></small><b></b>'; d.firstChild.textContent = k; d.lastChild.textContent = v; el.appendChild(d); });
+  } else if (progTab === 'missions') {
+    const box = $('ptab-missions');
+    box.innerHTML = '';
+    [['day', 'Today'], ['week', 'This week']].forEach(([kind, label]) => {
+      const h = document.createElement('div'); h.className = 'mhead'; h.innerHTML = '<span></span><span></span>'; h.firstChild.textContent = label;
+      h.lastChild.textContent = kind === 'day' ? 'resets at midnight UTC' : isoWeek(today()); box.appendChild(h);
+      missionsFor(kind).forEach(x => {
+        const d = document.createElement('div'); d.className = 'mission' + (x.done ? ' done' : '');
+        d.innerHTML = '<div class="top"><span></span><span class="rw"><i class="coin"></i></span></div><div class="bar"><i></i></div>';
+        d.querySelector('.top span').textContent = x.m.text(x.target) + '  (' + Math.min(x.value, x.target) + '/' + x.target + ')';
+        d.querySelector('.rw').append('+' + x.reward);
+        d.querySelector('.bar i').style.width = Math.min(100, Math.round(x.value / x.target * 100)) + '%';
+        box.appendChild(d);
+      });
+    });
+  } else {
+    const box = $('ptab-badges');
+    box.innerHTML = '<div class="mhead"><span>' + ach.length + ' of ' + BADGES.length + ' unlocked</span></div><div class="badges"></div>';
+    const g = box.querySelector('.badges');
+    BADGES.forEach(b => {
+      const d = document.createElement('div'); d.className = 'badge' + (ach.includes(b.id) ? '' : ' locked');
+      d.innerHTML = '<b></b><small></small><div class="rw"></div>';
+      d.querySelector('b').textContent = b.name; d.querySelector('small').textContent = b.desc; d.querySelector('.rw').textContent = '+' + b.reward + ' coins';
+      g.appendChild(d);
+    });
+  }
 }
+document.querySelectorAll('#progtabs button').forEach(b => b.addEventListener('click', () => { progTab = b.dataset.tab; renderStats(); }));
 $('statsbtn').addEventListener('click', () => { renderStats(); $('stats').classList.add('show'); });
 $('statsclose').addEventListener('click', () => $('stats').classList.remove('show'));
 
