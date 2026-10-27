@@ -1199,7 +1199,7 @@ function place(idx, r, c) {
   if (cfg().sprint && gameLines >= cfg().sprint) { render(); feedback(lines, gain, perfect, booms); sprintOver(); return; }
   if (cfg().gravity && (lines > 0 || booms > 0)) {   // Rising: blocks fall and may chain, so the move finishes after the cascade
     render(); feedback(lines, gain, perfect, booms); tutAfterMove(lines);
-    runCascade();
+    runCascade(rows);
     return;
   }
   riseStep();
@@ -1221,28 +1221,31 @@ function endChecks() {
 // ---- Rising: after a clear every block falls into the next empty space; a line that completes counts as a combo ----
 let cascading = false, cascadeTok = 0;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-function dropBlocks() {
+// Only blocks above the lowest cleared row fall; each one drops until it lands on something. Blocks below stay put.
+function dropBlocks(fromRow = N - 1) {
   const nb = new Set(), moves = [];
   for (let x = 0; x < N; x++) {
-    let w = N - 1;
-    for (let y = N - 1; y >= 0; y--) {
+    let w = fromRow;
+    while (w + 1 < N && !grid[w + 1][x]) w++;   // fall on past the cleared row into any gap below it
+    for (let y = fromRow; y >= 0; y--) {
       if (!grid[y][x]) continue;
       const had = bombs.has(y * N + x);
       if (y !== w) { grid[w][x] = grid[y][x]; grid[y][x] = null; moves.push({ idx: w * N + x, type: 'fall', rows: w - y }); }
-      if (had) nb.add(w * N + x);
+      if (had) { bombs.delete(y * N + x); nb.add(w * N + x); }
       w--;
     }
   }
-  bombs = nb;
+  nb.forEach(k => bombs.add(k));
   return moves;
 }
-async function runCascade() {
+async function runCascade(clearedRows) {
   const tok = ++cascadeTok; cascading = true;
+  let low = clearedRows.length ? Math.max(...clearedRows) : -1;   // the lowest line that was just cleared
   hint = null;
   for (let guard = 0; guard < 40; guard++) {
     await sleep(520);                       // the clear animation plays first
     if (tok !== cascadeTok) return;
-    const moves = dropBlocks();
+    const moves = low >= 0 ? dropBlocks(low) : [];
     if (!moves.length) break;
     addFx(moves); render(); sfx.tick();
     await sleep(440);                       // then the blocks fall
@@ -1250,6 +1253,7 @@ async function runCascade() {
     const rows = [], cols = [];
     for (let i = 0; i < N; i++) { if (grid[i].every(Boolean)) rows.push(i); if (grid.every(row => row[i])) cols.push(i); }
     if (!rows.length && !cols.length) break;
+    low = rows.length ? Math.max(...rows) : -1;
     const { lines, booms, blastCount } = resolveClears(rows, cols);
     const perfect = grid.every(row => row.every(x => !x));
     combo += 1; gameLines += lines; gameCombo = Math.max(gameCombo, combo);
@@ -1772,7 +1776,7 @@ function riseRow() {
   bombs = new Set([...bombs].map(k => k - N).filter(k => k >= 0));
   const cols = [];
   for (let x = 0; x < N; x++) if (grid.every(r => r[x])) cols.push(x);   // a new row can finish a column
-  if (cols.length) { resolveClears([], cols); if (cfg().gravity) dropBlocks(); }
+  if (cols.length) resolveClears([], cols);
   addFx(grid[N - 1].map((c, x) => (c ? { idx: (N - 1) * N + x, type: 'land' } : null)).filter(Boolean));
   sfx.tick(); buzz(30); toast('New row!');
   return true;
