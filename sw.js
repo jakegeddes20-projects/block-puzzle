@@ -1,6 +1,6 @@
 // Lets the game open offline. The page is fetched fresh whenever there is a connection,
 // so a new deploy shows up on the next load; the saved copy is only used when the network fails.
-const CACHE = 'bp-v6';
+const CACHE = 'bp-v7';
 const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
