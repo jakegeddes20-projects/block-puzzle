@@ -765,7 +765,8 @@ const SHAPES_BIG = [
   [[1,0,1],[1,1,1]], [[1,1,1],[1,0,1]], [[1,1],[1,0],[1,1]], [[1,1],[0,1],[1,1]], // U shapes
   [[1,1,1,0],[0,1,1,1]], [[0,1,1,1],[1,1,1,0]],                     // long S and Z
 ];
-const shapePool = () => SHAPES;   // classic: the original pieces on every board size
+// classic: the original pieces on every board size, except the 3x3 block shrinks to 3x2 on the 6x6 board
+const shapePool = () => (N === 6 ? SHAPES.map(sh => (sh.length === 3 && sh[0].length === 3 && isSolid(sh) ? [[1,1,1],[1,1,1]] : sh)) : SHAPES);
 
 // Crazy mode: piece size follows the board. S is the biggest box a piece may fill (3, 4, 5, 6 for 6x6 to 12x12),
 // and the cell count is capped well below a full box so pieces stay a manageable size.
@@ -864,7 +865,7 @@ function fitShape() {
   return [[1]];
 }
 // a shape for the current mode and board
-const anyShape = () => (mode === 'crazy' ? crazyShape() : SHAPES[Math.floor(rand() * SHAPES.length)]);
+const anyShape = () => (mode === 'crazy' ? crazyShape() : shapePool()[Math.floor(rand() * SHAPES.length)]);
 
 // preview = how many of the next hand's pieces are shown
 // safe = hand is guaranteed to contain a playable piece: 'any' may swap any piece,
@@ -988,7 +989,7 @@ function dealPieces() {
   const safe = cfg().safe;
   if (safe && !pieces.some(p => canPlaceAnywhere(p.shape))) {
     // crazy has no fixed list: try a batch of fresh shapes, with the single block as the last resort
-    const ok = (mode === 'crazy' ? Array.from({ length: 60 }, crazyShape).concat([[[1]]]) : SHAPES).filter(canPlaceAnywhere);
+    const ok = (mode === 'crazy' ? Array.from({ length: 60 }, crazyShape).concat([[[1]]]) : shapePool()).filter(canPlaceAnywhere);
     const slots = safe === 'hidden' ? [1, 2] : [0, 1, 2];   // slot 0 is the one medium previewed
     if (ok.length) pieces[slots[Math.floor(Math.random() * slots.length)]].shape = ok[Math.floor(Math.random() * ok.length)];
   }
@@ -1912,7 +1913,7 @@ function sprintOver() {
 
 // ---- Zen: never game over. When nothing fits, fresh pieces appear and, if the board is nearly full, the bottom rows are cleared ----
 function fitAnyShape() {
-  const pool = mode === 'crazy' ? Array.from({ length: 40 }, crazyShape).concat([[[1]]]) : SHAPES;
+  const pool = mode === 'crazy' ? Array.from({ length: 40 }, crazyShape).concat([[[1]]]) : shapePool();
   const ok = pool.filter(canPlaceAnywhere);
   return ok.length ? ok[Math.floor(Math.random() * ok.length)] : [[1]];
 }
