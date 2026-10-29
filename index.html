@@ -516,6 +516,8 @@
   /* the empty squares inside a piece's box must stay invisible in every look */
   :root[data-look] .piece .pc.e i { background: none; box-shadow: none; }
   body.rm *, body.rm *::before, body.rm *::after { animation-duration: .001ms !important; animation-delay: 0s !important; transition-duration: .001ms !important; }
+@keyframes tutglow { 0%,100% { box-shadow: 0 0 0 0 transparent; } 50% { box-shadow: 0 0 0 3px var(--accent), 0 0 18px var(--accent); } }
+.bottomrow.tutglow .tools2 { border-radius: 16px; animation: tutglow 1.2s ease-in-out infinite; }
 </style>
 </head>
 <body>
@@ -638,6 +640,7 @@
     <li><b>Keys.</b> On a computer: U undo, H hint, R remove, P power-ups, Esc cancels.</li>
     <li><b>Bombs.</b> In Crazy, some pieces hide a bomb. It shows once the piece is placed, and when its row or column clears it blows up the blocks around it. Bigger boards get bigger blasts.</li>
     <li><b>Remove.</b> In Crazy you can also remove one block: tap Remove, then tap any block on the board. One free per game, then an ad earns another.</li>
+    <li><b>Power-ups.</b> Under the board: Undo takes back your last move, Hint glows a good spot. Tap <b>More</b> for Shuffle (swap your three pieces for new ones) and Line Clear (tap it, then tap any row or column to clear it). Using one spends one from your stock. Earn more by watching an ad, or buy them in the shop (the basket at the top).</li>
     <li><b>Help.</b> Undo takes back your last move and Hint shows a good spot. Each has one free use per game, then an ad earns another. The Daily has none of these.</li>
   </ol>
   <p class="small">The game ends when none of your pieces fit. Easy shows your next 3 pieces, Medium shows 1, Hard shows none. Timed gives you 2 minutes, Puzzle sets a goal, and the Weekly Challenge changes its rules every week. In Rising, blocks fall after a clear and can chain into combos while new rows push up from below, Sprint is a race to 20 lines, Zen never ends, and Cleanup starts with a messy board.</p>
@@ -2854,14 +2857,15 @@ document.addEventListener('keydown', e => {
 
 // ---- a guided first game: highlights a move and explains one idea at a time ----
 let tutStep = -1, tutMoves = 0, tutTimer = null;
-const TUT_TEXT = ['Drag a piece onto the glowing spot.', 'Fill a whole row or column to clear it.', 'Nice! Clear lines on back-to-back turns for combos and bonus points.'];
+const TUT_TEXT = ['Drag a piece onto the glowing spot.', 'Fill a whole row or column to clear it.', 'Nice! Clear lines on back-to-back turns for combos and bonus points.', 'Stuck? Use Undo and Hint under the board, or tap More for Shuffle and Line Clear.'];
 function tutBegin() {
   if (!['easy', 'medium', 'hard'].includes(diff)) return;
   tutStep = 0; tutMoves = 0; coachUpdate();
 }
 function coachUpdate() {
   if (tutStep < 0) { $('coach').hidden = true; return; }
-  $('coachtext').textContent = TUT_TEXT[Math.min(tutStep, 2)];
+  $('coachtext').textContent = TUT_TEXT[Math.min(tutStep, 3)];
+  $('bottomrow').classList.toggle('tutglow', tutStep === 3);
   $('coach').hidden = false;
   if (tutStep < 2 && !locked) {   // glow the best spot, without using up a hint
     const m = bestMove();
@@ -2880,10 +2884,10 @@ function tutAfterMove(lines) {
   else if (tutStep === 1 && lines > 0) tutStep = 2;
   else if (tutStep === 1 && tutMoves >= 8) { tutEnd(); return; }
   coachUpdate();
-  if (tutStep === 2) { clearTimeout(tutTimer); tutTimer = setTimeout(tutEnd, 3800); }
+  if (tutStep === 2) { clearTimeout(tutTimer); tutTimer = setTimeout(() => { tutStep = 3; coachUpdate(); tutTimer = setTimeout(tutEnd, 7000); }, 3800); }
 }
 function tutEnd() {
-  tutStep = -1; hint = null; clearTimeout(tutTimer);
+  tutStep = -1; hint = null; clearTimeout(tutTimer); $('bottomrow').classList.remove('tutglow');
   try { LS.setItem('bp-tut', '1'); } catch (e) {}
   $('coach').hidden = true;
   render();
