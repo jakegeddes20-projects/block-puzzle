@@ -37,7 +37,7 @@
   :root[data-theme="light"] {
     --bg: #f3f4f8; --panel: #ffffff; --raised: #eef0f6; --cell: #e8ebf2; --cell-ring: rgba(20,24,40,.04);
     --line: rgba(20,24,40,.09); --hover: rgba(20,24,40,.045); --text: #141824; --muted: #646d85;
-    --accent: #ffb02e; --accent-text: #a35c00; --accent-ink: #2a1a00; --bad: #e5484d;
+    --accent: #ffb02e; --accent-text: #a35c00; --accent-ink: #2a1a00; --bad: #cf2f3a;
     --shadow: 0 14px 30px -20px rgba(30,40,80,.35); --card-shadow: 0 28px 50px -22px rgba(30,40,80,.38);
     --overlay: rgba(238,240,247,.78); --pop-shadow: rgba(255,255,255,.95);
     color-scheme: light;
@@ -46,7 +46,7 @@
     :root:not([data-theme]) {
       --bg: #f3f4f8; --panel: #ffffff; --raised: #eef0f6; --cell: #e8ebf2; --cell-ring: rgba(20,24,40,.04);
       --line: rgba(20,24,40,.09); --hover: rgba(20,24,40,.045); --text: #141824; --muted: #646d85;
-      --accent: #ffb02e; --accent-text: #a35c00; --accent-ink: #2a1a00; --bad: #e5484d;
+      --accent: #ffb02e; --accent-text: #a35c00; --accent-ink: #2a1a00; --bad: #cf2f3a;
       --shadow: 0 14px 30px -20px rgba(30,40,80,.35); --card-shadow: 0 28px 50px -22px rgba(30,40,80,.38);
       --overlay: rgba(238,240,247,.78); --pop-shadow: rgba(255,255,255,.95);
       color-scheme: light;
@@ -59,7 +59,7 @@
   button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   #app { max-width: calc(var(--appw) + 32px); margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 10px;
-    padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(14px, env(safe-area-inset-bottom));
+    padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
     padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
 
   .topbar { width: 100%; display: flex; justify-content: space-between; align-items: center; }
@@ -75,12 +75,12 @@
   .modeseg button small { font-size: 11px; font-weight: 500; opacity: .75; }
   .modeseg button:hover { color: var(--text); }
   .modeseg button.on { background: var(--raised); color: var(--text); box-shadow: inset 0 0 0 1.5px var(--accent); }
-  .levelpick { position: relative; width: 100%; z-index: 15; display: flex; gap: 8px; }
-  .levelbtn { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px; border-radius: 16px;
+  .levelpick { position: relative; width: 86%; z-index: 15; display: flex; gap: 6px; }
+  .levelbtn { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 11px; border-radius: 14px;
     background: var(--panel); color: var(--text); border: 1px solid var(--line); box-shadow: var(--shadow); text-align: left; transition: background .15s; }
   .levelbtn:hover { background: var(--raised); }
-  .levelbtn.sizebtn { flex: none; width: 86px; }
-  .levelbtn.modebtn { flex: none; width: 94px; }
+  .levelbtn.sizebtn { flex: none; width: 70px; }
+  .levelbtn.modebtn { flex: none; width: 82px; }
   .levelbtn.sizebtn .lv b, .levelbtn.modebtn .lv b { font-size: 15px; }
   .levelmenu.sizemenu, .levelmenu.modemenu { left: auto; width: 240px; }
   @media (max-width: 400px) { .levelbtn:not(.sizebtn):not(.modebtn) .lv small { display: none; } }
@@ -125,10 +125,10 @@
   .cell.ghost i { background: color-mix(in srgb, var(--c) 42%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--c) 70%, transparent); }
   .cell.fx-land i { animation: land .24s ease-out both; animation-delay: var(--d, 0ms); }
   .cell.fx-fall { z-index: 2; }
-  .cell.fx-fall i { animation: fall .4s cubic-bezier(.45, 0, .9, .6) both; animation-delay: var(--d, 0ms); }
-  @keyframes fall { from { transform: translateY(calc(var(--size) * var(--fr, 1) * -1)); } to { transform: none; } }
+  .cell.fx-fall i { animation: fall .44s linear both; animation-delay: var(--d, 0ms); }
+  @keyframes fall { 0% { transform: translateY(calc(var(--size) * var(--fr, 1) * -1)); animation-timing-function: cubic-bezier(.5, 0, .9, .6); } 62% { transform: none; } 78% { transform: translateY(calc(var(--size) * -.09)); animation-timing-function: ease-in; } 100% { transform: none; } }
   .cell.fx-burst i { animation: burst .46s ease-in both; animation-delay: var(--d, 0ms); }
-  @keyframes land { 0% { transform: scale(.72); filter: brightness(1.7); } 60% { transform: scale(1.07); } 100% { transform: scale(1); filter: none; } }
+  @keyframes land { 0% { transform: scale(.7); filter: brightness(1.8); } 40% { transform: scale(1.12, .9); filter: brightness(1.25); } 68% { transform: scale(.97, 1.04); filter: none; } 100% { transform: scale(1); filter: none; } }
   @keyframes burst { 0% { transform: scale(1); opacity: 1; filter: brightness(2.2); } 35% { transform: scale(1.14); opacity: 1; filter: brightness(2.6); } 100% { transform: scale(.15); opacity: 0; filter: brightness(2); } }
 
   #pop { position: absolute; left: 50%; top: 34%; transform: translate(-50%, 0); pointer-events: none; text-align: center; opacity: 0; line-height: 1.15; }
@@ -145,7 +145,16 @@
   .piece { display: grid; gap: 0; }
   .piece .pc { width: var(--pc, var(--pcell)); height: var(--pc, var(--pcell)); padding: 1.5px; }
   .piece .pc.e i { background: none; box-shadow: none; }
-  #ghost { position: fixed; z-index: 10; pointer-events: none; display: none; filter: drop-shadow(0 10px 14px rgba(0,0,0,.45)); }
+  #ghost { position: fixed; z-index: 10; pointer-events: none; display: none; filter: drop-shadow(0 16px 16px rgba(0,0,0,.42)); transform: scale(1.07); animation: lift .14s ease-out; }
+  @keyframes lift { from { transform: scale(.92); } to { transform: scale(1.07); } }
+  .slot.lifted .piece { opacity: .22; transform: scale(.88); transition: opacity .12s, transform .12s; }
+  .slot .piece { transition: opacity .15s, transform .15s; }
+  .sweep { position: absolute; pointer-events: none; z-index: 4; border-radius: 10px; opacity: 0; }
+  .sweep.h { background: linear-gradient(90deg, transparent, rgba(255,255,255,.9), transparent) 0 0 / 40% 100% no-repeat; animation: sweeph .55s ease-out forwards; }
+  .sweep.v { background: linear-gradient(180deg, transparent, rgba(255,255,255,.9), transparent) 0 0 / 100% 40% no-repeat; animation: sweepv .55s ease-out forwards; }
+  @keyframes sweeph { 0% { opacity: 1; background-position: -60% 0; } 100% { opacity: 0; background-position: 160% 0; } }
+  @keyframes sweepv { 0% { opacity: 1; background-position: 0 -60%; } 100% { opacity: 0; background-position: 0 160%; } }
+  .shard { position: absolute; width: 6px; height: 6px; border-radius: 2px; background: var(--c); pointer-events: none; z-index: 5; animation: sparkfly .7s ease-out forwards; }
   #ghost .pc { width: var(--size); height: var(--size); padding: 2px; }
 
   #next { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: space-around; height: calc(var(--pcell) * 2.3); padding-left: 40px; position: relative;
@@ -166,6 +175,9 @@
   #mid .stat.combo { padding: 2px 12px; }
   #mid .stat.combo b { font-size: 22px; }
   body.lefty #mid { direction: ltr; }
+  #adbanner { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; height: calc(50px + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px);
+    display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--panel); border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+  #adbanner b { padding: 2px 6px; border-radius: 5px; border: 1px solid var(--line); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
   #newgame { width: 100%; padding: 13px 0; border-radius: 14px; background: var(--accent); color: var(--accent-ink); font-size: 16px; font-weight: 700; margin-top: 10px; }
   #newgame[hidden] { display: none; }
   #lbtop { width: 100%; padding: 12px 0; border-radius: 14px; background: var(--panel); color: var(--text); border: 1px solid var(--line); font-size: 14px; font-weight: 600; transition: background .15s; }
@@ -305,7 +317,6 @@
   #board.hammering .cell.on i { animation: hammerpulse .9s ease-in-out infinite; box-shadow: inset 0 0 0 2px var(--accent); }
   @keyframes hammerpulse { 50% { transform: scale(.9); } }
   .chip { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 12px; background: var(--panel); color: var(--text); border: 1px solid var(--line); font-size: 14px; font-weight: 800; }
-  .chip:hover { background: var(--raised); }
   .coin { width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff3b0, #ffb938 55%, #c98400); box-shadow: inset 0 0 0 1.5px rgba(120,70,0,.5); display: inline-block; flex: none; }
   .coin.big { width: 20px; height: 20px; }
   @media (max-width: 380px) { h1 .name { display: none; } }
@@ -431,7 +442,7 @@
   :root[data-look="space"] .stat.combo small, :root[data-look="space"] .stat.combo b { color: #1d1500; }
 
   :root[data-look="candy"][data-theme] { --bg: #ffe9f2; --bgfx: linear-gradient(180deg, #ffe3f1 0%, #ffeede 55%, #fff4c9 100%); --panel: #ffffff; --raised: #fdeef5; --cell: #fbeef4; --cell-ring: transparent;
-    --line: rgba(214,51,108,.14); --hover: rgba(214,51,108,.06); --text: #4a2a52; --muted: #85598a; --accent: #ff7ab3; --accent-text: #c2255c; --accent-ink: #4a0f2d; --bad: #e5484d; --cardbg: #ffffff;
+    --line: rgba(214,51,108,.14); --hover: rgba(214,51,108,.06); --text: #4a2a52; --muted: #85598a; --accent: #ff7ab3; --accent-text: #c2255c; --accent-ink: #4a0f2d; --bad: #cf2f3a; --cardbg: #ffffff;
     --shadow: 0 8px 0 #f3c7da; --card-shadow: 0 20px 40px -16px rgba(214,51,108,.4); --overlay: rgba(255,233,242,.82); --pop-shadow: rgba(255,255,255,.95); --font: Fredoka, Outfit, system-ui, sans-serif; color-scheme: light; }
   :root[data-look="candy"] h1 { color: #d6336c; }
   :root[data-look="candy"] #board { border-radius: 28px; box-shadow: 0 8px 0 #f3c7da, 0 18px 30px rgba(214,51,108,.18); }
@@ -447,7 +458,7 @@
   :root[data-look="candy"] .stat.right b { color: var(--muted); }
 
   :root[data-look="wood"][data-theme] { --bg: #2a1d15; --bgfx: radial-gradient(100% 55% at 50% 30%, #4a3426 0%, #2a1d15 70%, #1c130e 100%); --panel: #5a3b24; --raised: #6b4629; --cell: #352419; --cell-ring: rgba(0,0,0,.25);
-    --line: rgba(243,230,208,.18); --hover: rgba(243,230,208,.08); --text: #f3e6d0; --muted: #d0bc9d; --accent: #e0b25a; --accent-text: #f0c878; --accent-ink: #2a1d15; --bad: #ff9a8a; --cardbg: #4a3426;
+    --line: rgba(243,230,208,.18); --hover: rgba(243,230,208,.08); --text: #f3e6d0; --muted: #dbc9ab; --accent: #e0b25a; --accent-text: #f0c878; --accent-ink: #2a1d15; --bad: #ff9a8a; --cardbg: #4a3426;
     --shadow: 0 14px 30px rgba(0,0,0,.45); --card-shadow: 0 28px 50px -10px rgba(0,0,0,.7); --overlay: rgba(28,19,14,.84); --pop-shadow: rgba(0,0,0,.6); --font: "DM Sans", Outfit, system-ui, sans-serif; color-scheme: dark; }
   :root[data-look="wood"] h1, :root[data-look="wood"] .stat b, :root[data-look="wood"] .card h2, :root[data-look="wood"] #pop b, :root[data-look="wood"] #callout { font-family: Fraunces, Georgia, serif; }
   :root[data-look="wood"] #board { background: linear-gradient(135deg, #7a5232, #5c3c24); box-shadow: 0 14px 30px rgba(0,0,0,.5), inset 0 2px 0 rgba(255,255,255,.18), inset 0 -3px 0 rgba(0,0,0,.35); border-radius: 20px; }
@@ -456,6 +467,51 @@
   :root[data-look="wood"] .cell.on i, :root[data-look="wood"] .pc i, :root[data-look="wood"] .cell.fx-burst i { border-radius: 14%; background: repeating-linear-gradient(95deg, rgba(0,0,0,.05) 0 2px, transparent 2px 7px), linear-gradient(145deg, color-mix(in srgb, var(--c) 70%, #fff), var(--c));
     box-shadow: inset 0 2px 0 rgba(255,255,255,.35), inset 0 -3px 0 rgba(0,0,0,.28), 0 2px 3px rgba(0,0,0,.4); }
   :root[data-look="wood"] #pop b, :root[data-look="wood"] #callout { color: #f6d58f; text-shadow: 0 2px 10px rgba(0,0,0,.7); }
+
+
+  [hidden] { display: none !important; }
+  /* ---- screens: one shared feel ---- */
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+  #over.show, #ad.show, #lbo.show, #nameo.show, #help.show, #stats.show, #settings.show, #shop.show, #sheet.show, #chal.show { animation: fadein .18s ease-out; }
+  .card { padding: 24px 22px; }
+  .card h2 { letter-spacing: -.01em; }
+  .card button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .card button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .card .buybtn { min-height: 40px; }
+  .card button.switch { min-height: 28px; }
+  .card .mini-seg button { min-height: 0; }
+  .card button.skin { display: grid; min-height: 0; }
+  #lbl li { gap: 12px; padding: 10px 12px; border: 1px solid transparent; }
+  #lbl .rk { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; background: color-mix(in srgb, var(--text) 8%, transparent); }
+  #lbl li.r1 { background: color-mix(in srgb, #ffc83d 16%, var(--raised)); border-color: color-mix(in srgb, #ffc83d 45%, transparent); }
+  #lbl li.r2 { background: color-mix(in srgb, #c5ccd8 16%, var(--raised)); border-color: color-mix(in srgb, #c5ccd8 40%, transparent); }
+  #lbl li.r3 { background: color-mix(in srgb, #e0955a 16%, var(--raised)); border-color: color-mix(in srgb, #e0955a 40%, transparent); }
+  #lbl li.r1 .rk { background: #ffc83d; color: #3a2600; } #lbl li.r2 .rk { background: #c5ccd8; color: #25303f; } #lbl li.r3 .rk { background: #e0955a; color: #3a1a00; }
+  #lbl li.none { display: grid; justify-items: center; gap: 8px; padding: 22px 10px; border: 0; }
+  #lbl li.none svg { width: 34px; height: 34px; fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; opacity: .8; }
+  #puzzlebar { padding: 8px 10px; border-radius: 16px; background: color-mix(in srgb, var(--accent) 9%, var(--panel)); border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line)); }
+  #puzzlebar .icon { background: transparent; }
+  .pzinfo b { color: var(--text); }
+
+
+  /* ---- theme atmosphere: slow background motion, off when Reduce motion is on ---- */
+  body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0; }
+  #app { position: relative; z-index: 1; }
+  :root[data-look="neon"] body::before { opacity: 1; background: radial-gradient(40% 30% at 18% 18%, rgba(255,61,139,.20), transparent 70%), radial-gradient(40% 30% at 85% 72%, rgba(25,227,255,.16), transparent 70%); animation: glowdrift 14s ease-in-out infinite alternate; }
+  @keyframes glowdrift { from { transform: translate(-3%, -2%) scale(1); } to { transform: translate(4%, 3%) scale(1.12); } }
+  :root[data-look="space"] body::before { opacity: 1; background: radial-gradient(1.6px 1.6px at 12% 22%, #fff, transparent), radial-gradient(1.2px 1.2px at 33% 64%, #ffe9b0, transparent), radial-gradient(1.8px 1.8px at 58% 12%, #fff, transparent), radial-gradient(1.2px 1.2px at 78% 40%, #fff, transparent), radial-gradient(1.6px 1.6px at 90% 82%, #ffe9b0, transparent), radial-gradient(1.2px 1.2px at 22% 90%, #fff, transparent), radial-gradient(1.4px 1.4px at 66% 76%, #fff, transparent); animation: twinkle 3.6s ease-in-out infinite alternate; }
+  @keyframes twinkle { from { opacity: .3; } to { opacity: 1; } }
+  :root[data-look="ocean"] body::before { opacity: 1; background: radial-gradient(circle at 12% 100%, transparent 5px, rgba(255,255,255,.16) 6px, transparent 8px), radial-gradient(circle at 38% 100%, transparent 3px, rgba(255,255,255,.14) 4px, transparent 6px), radial-gradient(circle at 63% 100%, transparent 7px, rgba(255,255,255,.14) 8px, transparent 10px), radial-gradient(circle at 86% 100%, transparent 4px, rgba(255,255,255,.16) 5px, transparent 7px); background-size: 100% 420px; animation: bubbles 16s linear infinite; }
+  @keyframes bubbles { from { background-position: 0 420px; } to { background-position: 0 -420px; } }
+  :root[data-look="candy"] body::before { opacity: .9; background: radial-gradient(circle at 10% 20%, rgba(255,95,162,.22) 0 9px, transparent 10px), radial-gradient(circle at 88% 30%, rgba(76,178,255,.22) 0 7px, transparent 8px), radial-gradient(circle at 20% 78%, rgba(255,210,63,.3) 0 8px, transparent 9px), radial-gradient(circle at 80% 86%, rgba(166,107,255,.22) 0 10px, transparent 11px); animation: floaty 9s ease-in-out infinite alternate; }
+  @keyframes floaty { from { transform: translateY(0); } to { transform: translateY(-14px); } }
+  body.rm::before { animation: none !important; }
+  @media (max-height: 720px) { #adbanner { height: calc(38px + env(safe-area-inset-bottom, 0px)); } #app { padding-bottom: calc(46px + env(safe-area-inset-bottom, 0px)); gap: 8px; } }
+  @media (min-width: 700px) {
+    body { padding-top: 14px; }
+    #app { padding-top: 16px; border-radius: 32px; background: color-mix(in srgb, var(--panel) 45%, transparent); border: 1px solid var(--line); box-shadow: var(--shadow); }
+    #adbanner { left: 50%; right: auto; width: min(100%, 468px); transform: translateX(-50%); border: 1px solid var(--line); border-bottom: 0; border-radius: 12px 12px 0 0; }
+  }
 
   /* the empty squares inside a piece's box must stay invisible in every look */
   :root[data-look] .piece .pc.e i { background: none; box-shadow: none; }
@@ -467,7 +523,8 @@
   <div class="topbar">
     <h1><svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="12" height="12" rx="4" fill="#ff6b81"/><rect x="17" y="3" width="12" height="12" rx="4" fill="#ffb938"/><rect x="3" y="17" width="12" height="12" rx="4" fill="#4cc3ff"/><rect x="17" y="17" width="12" height="12" rx="4" fill="#3fd9a0"/></svg><span class="name">Block Puzzle 2</span></h1>
     <div class="tools">
-      <button id="coinbtn" class="chip" aria-label="Shop"><i class="coin"></i><b id="coincount">0</b></button>
+      <div id="coinbtn" class="chip" aria-label="Coins"><i class="coin"></i><b id="coincount">0</b></div>
+      <button id="shopbtn" class="icon" aria-label="Shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5h18l-1.9 9a2 2 0 0 1-2 1.6H6.9a2 2 0 0 1-2-1.6z"/><path d="m8 9.5 3-5.5M16 9.5 13 4M10 13.5v3.5M14 13.5v3.5"/></svg></button>
       <button id="statsbtn" class="icon" aria-label="Stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg></button>
       <button id="soundbtn" class="icon" aria-label="Sound" aria-pressed="true"></button>
       <button id="settingsbtn" class="icon" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h0a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
@@ -501,6 +558,7 @@
   </div>
   <button id="lbtop" hidden>Daily leaderboard</button>
 </div>
+<div id="adbanner" role="complementary" aria-label="Advertisement"><b>Ad</b><span>Banner ad placeholder</span></div>
 <div id="ghost"></div>
 <div id="flash"></div>
 <div id="toast" role="status"></div>
@@ -586,20 +644,29 @@
   <button id="helpclose">Got it</button>
 </div></div>
 
-<script>
+<script type="text/plain" id="main">
+// ---- storage and platform: the web uses localStorage; the installed app keeps everything in memory and mirrors it to the phone's own storage ----
+const IS_NATIVE = !!(window.Capacitor && typeof Capacitor.isNativePlatform === 'function' && Capacitor.isNativePlatform());
+const DEV_LINKS = true;   // test links such as ?unlock=coins. Set to false for a release build.
+const LS = {
+  getItem(k) { if (window.__bpStore) return window.__bpStore.has(k) ? window.__bpStore.get(k) : null; return localStorage.getItem(k); },
+  setItem(k, v) { v = String(v); if (window.__bpStore) { window.__bpStore.set(k, v); window.__bpSave(k, v); } else localStorage.setItem(k, v); },
+  removeItem(k) { if (window.__bpStore) { window.__bpStore.delete(k); window.__bpRemove(k); } else localStorage.removeItem(k); },
+};
+try { const t = LS.getItem('bp-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
 const SIZES = [6, 8, 10, 12];
 let N = 8;   // board is N x N
-try { const z = +localStorage.getItem('bp-size'); if (SIZES.includes(z)) N = z; } catch (e) {}
+try { const z = +LS.getItem('bp-size'); if (SIZES.includes(z)) N = z; } catch (e) {}
 document.documentElement.style.setProperty('--n', N);
 // 8x8 keeps the original storage keys so existing saves and bests carry over; other sizes get their own
 let mode = 'classic';   // classic = the original pieces, crazy = wild shapes scaled to the board
-try { const m = localStorage.getItem('bp-mode'); if (m === 'classic' || m === 'crazy') mode = m; } catch (e) {}
+try { const m = LS.getItem('bp-mode'); if (m === 'classic' || m === 'crazy') mode = m; } catch (e) {}
 const SZ = () => (mode === 'crazy' ? 'c-' : '') + (N === 8 ? '' : N + '-');
 const COLORS = ['#ff6b81', '#ffb938', '#3fd9a0', '#4cc3ff', '#a07bff', '#ff8f4d'];   // base colours: what pieces and saves store
 
 // ---- stats and unlocks ----
 const stats = { games: 0, lines: 0, bestCombo: 0, bestClear: 0, perfects: 0, topScore: 0, streak: 0, bestStreak: 0, lastDaily: '', solved: {}, booms: 0, weeklyRuns: 0, challengeWins: 0, purchases: 0 };
-try { Object.assign(stats, JSON.parse(localStorage.getItem('bp-stats')) || {}); } catch (e) {}
+try { Object.assign(stats, JSON.parse(LS.getItem('bp-stats')) || {}); } catch (e) {}
 // ---- coins and tools ----
 const TOOLS = ['undo', 'hint', 'remove', 'shuffle', 'line'];
 const ITEMS = {
@@ -612,15 +679,15 @@ const ITEMS = {
 };
 const wallet = { coins: 0, inv: { undo: 0, hint: 0, remove: 0, shuffle: 1, line: 1, freeze: 1 }, giftDay: '', adDay: '', adN: 0 };   // new players get one of each power-up to try
 try {
-  const w = JSON.parse(localStorage.getItem('bp-wallet'));
+  const w = JSON.parse(LS.getItem('bp-wallet'));
   if (w) { Object.assign(wallet, w); wallet.inv = Object.assign({ undo: 0, hint: 0, remove: 0, shuffle: 0, line: 0, freeze: 0 }, w.inv); }
 } catch (e) {}
-function saveWallet() { try { localStorage.setItem('bp-wallet', JSON.stringify(wallet)); } catch (e) {} }
+function saveWallet() { try { LS.setItem('bp-wallet', JSON.stringify(wallet)); } catch (e) {} }
 function paintCoins() { const el = document.getElementById('coincount'); if (el) el.textContent = wallet.coins; }
 function addCoins(n) { wallet.coins += n; saveWallet(); paintCoins(); }
 // coins for a finished game: a few for playing, more for lines and score
 const coinsFor = (sc, lines) => Math.min(100, 3 + Math.floor(lines * 1.2) + Math.floor(sc / 40));
-function saveStats() { try { localStorage.setItem('bp-stats', JSON.stringify(stats)); } catch (e) {} }
+function saveStats() { try { LS.setItem('bp-stats', JSON.stringify(stats)); } catch (e) {} }
 
 // block styles: same six slots as COLORS. Unlocked by playing.
 const SKINS = {
@@ -633,7 +700,7 @@ const SKINS = {
 };
 const skinUnlocked = k => !SKINS[k].need || Object.entries(SKINS[k].need).every(([stat, v]) => stats[stat] >= v);
 let skin = 'classic';
-try { const k = localStorage.getItem('bp-skin'); if (SKINS[k]) skin = k; } catch (e) {}
+try { const k = LS.getItem('bp-skin'); if (SKINS[k]) skin = k; } catch (e) {}
 // looks: whole-game themes bought with coins. Each one has its own colours, block style and effects (see the data-look CSS).
 const LOOKS = {
   classic: { label: 'Classic', sub: 'Clean and flat',     price: 0,    colors: null, pv: '#1c2030', tc: null },
@@ -645,7 +712,7 @@ const LOOKS = {
 };
 let look = 'classic', ownedLooks = ['classic'];
 try {
-  const l = localStorage.getItem('bp-look'); const o = JSON.parse(localStorage.getItem('bp-looks'));
+  const l = LS.getItem('bp-look'); const o = JSON.parse(LS.getItem('bp-looks'));
   if (Array.isArray(o)) ownedLooks = ['classic'].concat(o.filter(k => LOOKS[k] && k !== 'classic'));
   if (LOOKS[l] && ownedLooks.includes(l)) look = l;
 } catch (e) {}
@@ -653,10 +720,10 @@ try {
 try {
   const q = new URLSearchParams(location.search);
   const u = q.get('unlock');
-  if (u === 'themes' || u === 'coins') {
+  if (DEV_LINKS && (u === 'themes' || u === 'coins')) {
     if (u === 'themes') {
       ownedLooks = Object.keys(LOOKS);
-      localStorage.setItem('bp-looks', JSON.stringify(ownedLooks.filter(x => x !== 'classic')));
+      LS.setItem('bp-looks', JSON.stringify(ownedLooks.filter(x => x !== 'classic')));
     } else { wallet.coins += 5000; saveWallet(); }
     q.delete('unlock'); window.history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash);
   }
@@ -670,7 +737,7 @@ function applyLook() {
 const kOf = c => COLORS.indexOf(c);
 const skinColor = c => { const i = kOf(c); return i < 0 ? c : (LOOKS[look].colors || SKINS[skin].colors)[i]; };
 let cbMode = false, lefty = false, LIFT = 40;
-try { cbMode = localStorage.getItem('bp-cb') === '1'; lefty = localStorage.getItem('bp-lefty') === '1'; const l = +localStorage.getItem('bp-lift'); if ([20, 40, 70].includes(l)) LIFT = l; } catch (e) {}
+try { cbMode = LS.getItem('bp-cb') === '1'; lefty = LS.getItem('bp-lefty') === '1'; const l = +LS.getItem('bp-lift'); if ([20, 40, 70].includes(l)) LIFT = l; } catch (e) {}
 document.body.classList.toggle('cb', cbMode);
 document.body.classList.toggle('lefty', lefty);
 const SHAPES = [
@@ -876,25 +943,26 @@ function rand() {
 const sizeTag = () => (mode === 'crazy' ? ' Crazy' : '') + (N === 8 ? '' : ' ' + N + '\u00d7' + N);
 const dailyKey = () => 'bp-daily-' + SZ() + today();
 const weeklyKey = () => 'bp-weekly-' + isoWeek(today()) + '-' + weeklyMod().id;
-function weeklyResult() { try { const v = localStorage.getItem(weeklyKey()); return v === null ? null : +v; } catch (e) { return null; } }
-function dailyResult() { try { const v = localStorage.getItem(dailyKey()); return v === null ? null : +v; } catch (e) { return null; } }
+function weeklyResult() { try { const v = LS.getItem(weeklyKey()); return v === null ? null : +v; } catch (e) { return null; } }
+function dailyResult() { try { const v = LS.getItem(dailyKey()); return v === null ? null : +v; } catch (e) { return null; } }
 let grid, pieces, nextPieces, score, best, combo = 0, diff = 'medium';
+let gameToken = null, gameMoves = 0, tokenSeq = 0;   // the ticket and move count that prove a daily or weekly score came from real play
 let lastEarned = 0;   // coins from the game that just ended
 let cardShown = false;   // a results card has come up for the current game
 let locked = false;   // true once a game is over (or today's daily is used up): nothing can be placed
-try { const d = localStorage.getItem('bp-diff'); if (DIFF[d]) diff = d; } catch (e) {}
+try { const d = LS.getItem('bp-diff'); if (DIFF[d]) diff = d; } catch (e) {}
 // puzzles are always 8x8 classic; remember the board the player had so leaving puzzles restores it
 let prePuzzle = null;
 if (forcedFor(diff)) { const f = forcedFor(diff); prePuzzle = { N, mode }; N = f.N; mode = f.mode; document.documentElement.style.setProperty('--n', N); }
 // one-time reset: Medium and Hard bests were earned with the old x1.5 / x2 multipliers
 try {
-  if (localStorage.getItem('bp-scoring') !== '2') {
-    localStorage.removeItem('bp-best-medium');
-    localStorage.removeItem('bp-best-hard');
-    localStorage.setItem('bp-scoring', '2');
+  if (LS.getItem('bp-scoring') !== '2') {
+    LS.removeItem('bp-best-medium');
+    LS.removeItem('bp-best-hard');
+    LS.setItem('bp-scoring', '2');
   }
 } catch (e) {}
-function loadBest() { try { best = +localStorage.getItem('bp-best-' + SZ() + diff) || 0; } catch (e) { best = 0; } }
+function loadBest() { try { best = +LS.getItem('bp-best-' + SZ() + diff) || 0; } catch (e) { best = 0; } }
 
 const $ = id => document.getElementById(id);
 const boardEl = $('board'), trayEl = $('tray'), ghostEl = $('ghost');
@@ -1045,6 +1113,7 @@ function startDrag(e, idx) {
   const wasSelected = sel && sel.idx === idx;
   clearSel();
   drag = { idx, p: pieces[idx], target: null, x: e.clientX, y: e.clientY, moved: false, wasSelected };
+  if (trayEl.children[idx]) trayEl.children[idx].classList.add('lifted');
   showGhost(drag.p);
   moveDrag(e);
   window.addEventListener('pointermove', moveDrag);
@@ -1057,6 +1126,7 @@ function moveDrag(e) {
   track(drag, e, LIFT);
 }
 function stopListeners() {
+  trayEl.querySelectorAll('.lifted').forEach(s => s.classList.remove('lifted'));
   window.removeEventListener('pointermove', moveDrag);
   window.removeEventListener('pointerup', endDrag);
   window.removeEventListener('pointercancel', cancelDrag);
@@ -1120,10 +1190,27 @@ let hint = null;                     // { idx, r, c, cells, color } while a hint
 let hintTimer = null;
 let riseLeft = 0;                    // Rising: moves until the next row pushes up
 let bombs = new Set();               // board cells that hold a placed, still armed bomb
-const snap = () => JSON.stringify({ grid, pieces, nextPieces, score, combo, rs, gameLines, gameCombo, riseLeft, bombs: [...bombs] });
+const snap = () => JSON.stringify({ grid, pieces, nextPieces, score, combo, rs, gameLines, gameCombo, gameMoves, riseLeft, bombs: [...bombs] });
 
 // Clears the given rows and columns, sets off any bombs on them (a bomb caught in a blast chains) and
 // plays the effects. Used by placing a piece and by the Line Clear power-up.
+// a bright sweep along every cleared line and shards flying off the cleared blocks
+function clearFlash(rows, cols, burst) {
+  if (document.body.classList.contains('rm')) return;
+  const wrap = $('boardwrap'), wr = wrap.getBoundingClientRect(), br = boardEl.getBoundingClientRect();
+  const pitch = (br.width - 12) / N, x0 = br.left - wr.left + 6, y0 = br.top - wr.top + 6;
+  const add = (cls, l, t, w, h) => { const d = document.createElement('div'); d.className = 'sweep ' + cls; d.style.cssText = 'left:' + l + 'px;top:' + t + 'px;width:' + w + 'px;height:' + h + 'px'; wrap.appendChild(d); setTimeout(() => d.remove(), 650); };
+  rows.forEach(r => add('h', x0, y0 + r * pitch, N * pitch, pitch));
+  cols.forEach(c => add('v', x0 + c * pitch, y0, pitch, N * pitch));
+  const cells = [...burst].sort(() => Math.random() - 0.5).slice(0, 30);
+  cells.forEach(([idx, color]) => {
+    const p = document.createElement('i'), a = Math.random() * Math.PI * 2, d = 26 + Math.random() * 60;
+    p.className = 'shard';
+    p.style.left = x0 + (idx % N) * pitch + pitch / 2 - 3 + 'px'; p.style.top = y0 + Math.floor(idx / N) * pitch + pitch / 2 - 3 + 'px';
+    p.style.setProperty('--dx', Math.cos(a) * d + 'px'); p.style.setProperty('--dy', Math.sin(a) * d - 14 + 'px'); p.style.setProperty('--c', skinColor(color));
+    wrap.appendChild(p); setTimeout(() => p.remove(), 800);
+  });
+}
 function resolveClears(rows, cols) {
   const lines = rows.length + cols.length;
   const burst = new Map();   // cleared cells and their colours, for the clear animation
@@ -1154,12 +1241,14 @@ function resolveClears(rows, cols) {
     ...exploded.map(idx => ({ idx, type: 'boom' })),
   ]);
   stats.booms += booms;
+  clearFlash(rows, cols, burst);
   return { lines, booms, blastCount: blast.size, gone };
 }
 
 function place(idx, r, c) {
   history = snap();
   hint = null;
+  gameMoves++;
   const p = pieces[idx];
   let placed = 0;
   p.shape.forEach((row, i) => row.forEach((v, j) => { if (v) { grid[r + i][c + j] = p.color; placed++; } }));
@@ -1213,7 +1302,7 @@ function riseStep() {
   if (cfg().rise && --riseLeft <= 0) { riseLeft = riseInterval(); riseRow(); }   // a row that has no room to rise is skipped
 }
 function endChecks() {
-  if (cfg().zen && score > best) { best = score; try { localStorage.setItem('bp-best-' + SZ() + diff, best); } catch (e) {} }
+  if (cfg().zen && score > best) { best = score; try { LS.setItem('bp-best-' + SZ() + diff, best); } catch (e) {} }
   if (!pieces.some(x => x && canPlaceAnywhere(x.shape))) { if (cfg().zen) { zenRescue(); saveGame(); } else gameOver(); }
   else saveGame();
 }
@@ -1277,13 +1366,13 @@ const saveKey = () => 'bp-save-' + SZ() + diff;
 const noSave = () => diff === 'puzzle' || diff === 'challenge' || !!cfg().time || !!cfg().sprint;
 function saveGame() {
   if (noSave()) return;
-  try { localStorage.setItem(saveKey(), JSON.stringify({ grid, pieces, nextPieces, score, combo, rs, date: today(), week: isoWeek(today()), curSeed, riseLeft, gameLines, gameCombo, undosLeft, hintsLeft, hammersLeft, bombs: [...bombs] })); } catch (e) {}
+  try { LS.setItem(saveKey(), JSON.stringify({ grid, pieces, nextPieces, score, combo, rs, date: today(), week: isoWeek(today()), curSeed, riseLeft, gameLines, gameCombo, gameMoves, gameToken, undosLeft, hintsLeft, hammersLeft, bombs: [...bombs] })); } catch (e) {}
 }
-function clearSave() { try { localStorage.removeItem(saveKey()); } catch (e) {} }
+function clearSave() { try { LS.removeItem(saveKey()); } catch (e) {} }
 function loadGame() {
   if (noSave()) return false;
   try {
-    const s = JSON.parse(localStorage.getItem(saveKey()));
+    const s = JSON.parse(LS.getItem(saveKey()));
     if (!s || s.grid.length !== N || s.pieces.length !== 3 || s.nextPieces.length !== 3) return false;
     if (diff === 'daily' && s.date !== today()) return false;   // yesterday's daily is over
     if (diff === 'weekly' && s.week !== isoWeek(today())) return false;   // last week's weekly is over
@@ -1291,7 +1380,8 @@ function loadGame() {
     riseLeft = s.riseLeft === undefined ? riseInterval() : s.riseLeft;
     ({ grid, pieces, nextPieces, score, combo } = s);
     rs = s.rs | 0;
-    gameLines = s.gameLines | 0; gameCombo = s.gameCombo | 0;
+    gameLines = s.gameLines | 0; gameCombo = s.gameCombo | 0; gameMoves = s.gameMoves | 0; gameToken = s.gameToken || null;
+    if (!gameToken) ensureToken();
     undosLeft = s.undosLeft === undefined ? 1 : s.undosLeft; hintsLeft = s.hintsLeft === undefined ? 1 : s.hintsLeft;
     hammersLeft = s.hammersLeft === undefined ? 1 : s.hammersLeft;
     bombs = new Set(s.bombs || []);
@@ -1316,10 +1406,10 @@ function fitScreen() {
     const over = root.scrollHeight - window.innerHeight;
     if (over <= 1) return;
     const want = cell() - over / N;
-    if (want >= wide * 0.66) root.style.setProperty('--hmax', want + 'px');
+    if (want >= wide * 0.3) root.style.setProperty('--hmax', want + 'px');
     else {
-      root.style.setProperty('--hmax', wide * 0.66 + 'px');
-      fit = Math.max(0.45, fit - 0.1);
+      root.style.setProperty('--hmax', wide * 0.3 + 'px');
+      fit = Math.max(0.35, fit - 0.1);
       root.style.setProperty('--fit', fit);
     }
   }
@@ -1530,7 +1620,7 @@ function setMode(m) {
   clearSel();
   mode = m;
   fx = [];
-  try { localStorage.setItem('bp-mode', m); } catch (e) {}
+  try { LS.setItem('bp-mode', m); } catch (e) {}
   start();
 }
 function closeMenu() { if (menuOpen) { menuOpen = null; renderDiff(); } }
@@ -1546,7 +1636,7 @@ function setDiff(k) {
   if (f) { if (!prePuzzle) prePuzzle = { N, mode }; N = f.N; mode = f.mode; applySize(); }
   else if (prePuzzle) { N = prePuzzle.N; mode = prePuzzle.mode; prePuzzle = null; applySize(); }
   diff = k;
-  if (!DIFF[k].hidden) { try { localStorage.setItem('bp-diff', k); } catch (e) {} }   // a challenge is not a level you return to
+  if (!DIFF[k].hidden) { try { LS.setItem('bp-diff', k); } catch (e) {} }   // a challenge is not a level you return to
   start();
 }
 // each board size keeps its own game in progress, bests and daily, like each level does
@@ -1556,16 +1646,16 @@ function setSize(z) {
   N = z;
   fx = [];
   document.documentElement.style.setProperty('--n', N);
-  try { localStorage.setItem('bp-size', N); } catch (e) {}
+  try { LS.setItem('bp-size', N); } catch (e) {}
   start();
 }
 
 const PUZZLES = [{"b":["01010000","01010000","11110001","10111111","01010100","01001001","01000001","11000001"],"p":[[[1]],[[1]],[[0,1],[1,1]]],"g":2},{"b":["00001000","01111111","01101000","00001100","00001000","01001000","01110111","00011000"],"p":[[[1],[1]],[[1]],[[1]]],"g":2},{"b":["00011111","00000100","00001100","10000010","01000110","00000000","10001111","11011111"],"p":[[[1,1,1],[0,1,0]],[[1,1,1],[0,1,0]],[[1]]],"g":3},{"b":["00000010","00100001","00010000","10000000","10100010","10000010","10000010","11100111"],"p":[[[1],[1],[1]],[[1],[1],[1]],[[1,1]]],"g":2},{"b":["00010000","10110000","10010000","00010000","10010000","10000111","00010000","00011010"],"p":[[[1]],[[1,1]],[[1,1],[0,1]]],"g":2},{"b":["00100100","00010000","11111101","11111000","00011000","00000100","00001000","11001111"],"p":[[[1,1]],[[0,1,0],[1,1,1]],[[1]]],"g":3},{"b":["00001100","00001101","01100100","01001100","11110011","10000000","01001100","00001101"],"p":[[[1,1],[1,1]],[[1]],[[1]]],"g":3},{"b":["01001100","10111000","10101001","01001010","00101000","00000001","01001000","11110011"],"p":[[[1,1,1,1]],[[1,1]],[[1,1,1]]],"g":2},{"b":["11010010","11100011","00101001","01000001","11011111","00010000","00010000","00110000"],"p":[[[1,1,1],[1,0,0],[1,0,0]],[[1,1]],[[1]]],"g":3},{"b":["00111000","10011000","00001010","01000000","01011010","11101111","00000010","00001000"],"p":[[[1,0],[1,1]],[[1,0],[1,1],[1,0]],[[1]]],"g":3},{"b":["00110001","00100000","00010000","01110001","00110100","00110000","00110000","00010001"],"p":[[[1,1]],[[1]],[[1,1]]],"g":2},{"b":["10100010","10000010","10000110","00000000","00000010","00000011","00001011","10010010"],"p":[[[1],[1],[1]],[[1,1]],[[1]]],"g":2},{"b":["11001100","11001000","00001100","11001010","11001000","10001101","10000000","10001010"],"p":[[[1,1]],[[1,0],[1,1],[1,0]],[[1,1]]],"g":3},{"b":["01010110","01110010","01000010","00000010","10011111","00110011","00010000","01010010"],"p":[[[1],[1],[1],[1]],[[1,1,1]],[[0,1],[1,1]]],"g":3},{"b":["11110001","10010001","10011001","10110000","10010000","10010011","10000001","00100001"],"p":[[[1],[1]],[[1],[1]],[[1]]],"g":3},{"b":["10011001","11011010","11011010","10110011","10000000","10010000","00000100","00011000"],"p":[[[1],[1]],[[0,1],[1,1]],[[0,1],[1,1]]],"g":3},{"b":["00001010","00000010","00000010","01010010","00100011","00101000","11111001","00100011"],"p":[[[1,1],[1,1]],[[1],[1]],[[1],[1],[1],[1]]],"g":3},{"b":["00111100","01111001","01000000","11011111","00000001","00000000","01000010","00000000"],"p":[[[1,1],[1,0]],[[0,1,1],[1,1,0]],[[1]]],"g":3},{"b":["00000011","00000000","00000101","00010111","00000101","11000000","00000111","00000111"],"p":[[[0,1,0],[1,1,1]],[[1,1],[1,0]],[[1],[1]]],"g":3},{"b":["00111111","00000100","00101000","00110001","00000010","11110101","11111100","00000011"],"p":[[[1,1]],[[1,0],[1,1]],[[1]]],"g":3}];
 let puzzleIdx = 0;
-try { puzzleIdx = Math.min(PUZZLES.length - 1, Math.max(0, +localStorage.getItem('bp-puzzle') || 0)); } catch (e) {}
+try { puzzleIdx = Math.min(PUZZLES.length - 1, Math.max(0, +LS.getItem('bp-puzzle') || 0)); } catch (e) {}
 function loadPuzzle(i) {
   puzzleIdx = ((i % PUZZLES.length) + PUZZLES.length) % PUZZLES.length;
-  try { localStorage.setItem('bp-puzzle', puzzleIdx); } catch (e) {}
+  try { LS.setItem('bp-puzzle', puzzleIdx); } catch (e) {}
   const p = PUZZLES[puzzleIdx];
   grid = p.b.map(row => [...row].map(ch => (ch === '1' ? '#7c869e' : null)));
   pieces = p.p.map((shape, k) => ({ shape, color: COLORS[(puzzleIdx + k) % COLORS.length] }));
@@ -1613,7 +1703,7 @@ function updateStreak() {
 function gameOver(reason) {
   stopTimer();
   const prevBest = best, isBest = score > best;
-  if (isBest) { best = score; try { localStorage.setItem('bp-best-' + SZ() + diff, best); } catch (e) {} }
+  if (isBest) { best = score; try { LS.setItem('bp-best-' + SZ() + diff, best); } catch (e) {} }
   locked = true;
   clearSave();
   sfx.over();
@@ -1632,7 +1722,7 @@ function gameOver(reason) {
   const title = reason === 'time' ? 'Time up' : reason === 'rise' ? 'Overflow!' : 'Game over';
   if (diff === 'weekly') {
     const prevW = weeklyResult(), topW = prevW === null ? score : Math.max(prevW, score);
-    try { localStorage.setItem(weeklyKey(), topW); } catch (e) {}
+    try { LS.setItem(weeklyKey(), topW); if (prevW === null || score >= prevW) LS.setItem(weeklyKey() + '-proof', JSON.stringify({ token: gameToken, moves: gameMoves })); } catch (e) {}
     if (prevW === null) { addCoins(50); stats.weeklyRuns++; saveStats(); extraWeekly = ' \u00b7 +50 coins for your first run this week'; } else extraWeekly = '';
     shareText = buildShare(topW, grid);
     setTimeout(() => {
@@ -1654,7 +1744,7 @@ function gameOver(reason) {
     // everyone gets one go; the best of any extra goes (bought with an ad) is the day's score
     const prev = dailyResult();
     const top = prev === null ? score : Math.max(prev, score);
-    try { localStorage.setItem(dailyKey(), top); if (prev === null || score >= prev) localStorage.setItem(dailyKey() + '-board', JSON.stringify(grid)); } catch (e) {}
+    try { LS.setItem(dailyKey(), top); if (prev === null || score >= prev) { LS.setItem(dailyKey() + '-board', JSON.stringify(grid)); LS.setItem(dailyKey() + '-proof', JSON.stringify({ token: gameToken, moves: gameMoves })); } } catch (e) {}
     shareText = buildShare(top, grid);
     // short delay so the last clear animation is seen before the card covers the board
     setTimeout(() => {
@@ -1672,9 +1762,23 @@ function gameOver(reason) {
 
 let extraWeekly = '';
 let againMode = 'reset';   // what the main button on the card does
+const ICO = {
+  again: '<svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg>',
+  share: '<svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="m8.3 10.8 7.4-4.4M8.3 13.2l7.4 4.4"/></svg>',
+  trophy: '<svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4v2a4 4 0 0 0 4 4M16 6h4v2a4 4 0 0 1-4 4M12 13v4M8 20h8M10 17h4"/></svg>',
+  flag: '<svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',
+  play: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
+  empty: '<svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4v2a4 4 0 0 0 4 4M16 6h4v2a4 4 0 0 1-4 4M12 13v4M8 20h8M10 17h4"/></svg>',
+  off: '<svg viewBox="0 0 24 24"><path d="M2 2l20 20"/><path d="M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 5.2-2.8M19 13a10 10 0 0 0-2.4-1.9M2 8.8a15 15 0 0 1 4.5-2.7M22 8.8A15 15 0 0 0 12 5"/><circle cx="12" cy="20" r=".8"/></svg>',
+};
+function countInto(el, prefix, v) {   // the final score ticks up on the game over card
+  el.textContent = ''; const t = document.createTextNode(prefix), n = document.createElement('span'); el.appendChild(t); el.appendChild(n);
+  n._cur = 0; n.textContent = '0'; countTo(n, v);
+}
 function showCard(title, final, newbest, note, kind, extra) {
   $('otitle').textContent = title;
-  $('final').textContent = final;
+  const fm = /^(.*?)(\d+)$/.exec(final);
+  if (fm) countInto($('final'), fm[1], +fm[2]); else $('final').textContent = final;
   $('newbest').textContent = newbest;
   $('newbest').classList.toggle('pill', newbest === 'New best!');
   const full = !!extra && kind !== 'solved' && kind !== 'failed';
@@ -1699,15 +1803,16 @@ function showCard(title, final, newbest, note, kind, extra) {
   const daily = kind === 'daily', weekly = kind === 'weekly', challenge = kind === 'challenge';
   againMode = kind === 'solved' ? 'next' : kind === 'failed' ? 'retry' : 'reset';
   $('again').hidden = daily;
-  $('again').textContent = kind === 'solved' ? 'Next puzzle' : kind === 'failed' ? 'Retry' : weekly || challenge ? 'Try again' : 'Play again';
+  $('again').innerHTML = ICO.again + (kind === 'solved' ? 'Next puzzle' : kind === 'failed' ? 'Retry' : weekly || challenge ? 'Try again' : 'Play again');
   $('adbtn').hidden = !daily || adsLeft() === 0;
-  $('adbtn').textContent = 'Watch ad for another go (' + adsLeft() + ' left)';
+  $('adbtn').innerHTML = ICO.play + 'Watch ad for another go (' + adsLeft() + ' left)';
   $('lbbtn').hidden = !(daily || weekly);
   $('lbbtn').dataset.board = weekly ? 'weekly' : 'daily';
+  $('lbbtn').innerHTML = ICO.trophy + 'Leaderboard';
   $('share').hidden = !(daily || weekly || challenge || kind === 'normal');
-  $('share').textContent = challenge ? 'Challenge back' : 'Share';
+  $('share').innerHTML = (challenge ? ICO.flag : ICO.share) + (challenge ? 'Challenge back' : 'Share');
   $('chalbtn').hidden = !(kind === 'normal' && CHAL_BASES.includes(diff));
-  $('chalbtn').textContent = 'Challenge a friend';
+  $('chalbtn').innerHTML = ICO.flag + 'Challenge a friend';
   $('over').classList.add('show');
   cardShown = true;
 }
@@ -1717,7 +1822,7 @@ function showDailyDone() {
   locked = true;
   const r = dailyResult();
   let board = null;
-  try { board = JSON.parse(localStorage.getItem(dailyKey() + '-board')); } catch (e) {}
+  try { board = JSON.parse(LS.getItem(dailyKey() + '-board')); } catch (e) {}
   shareText = buildShare(r, board);
   showCard('Daily played', 'Today\u2019s score: ' + r, '',
     adsLeft() ? 'Watch an ad for another go. Your best score of the day counts.' : 'No extra goes left today. Come back tomorrow for new pieces.', 'daily');
@@ -1727,7 +1832,7 @@ function showDailyDone() {
 // 'go' buys an extra daily go (at most 3 a day); 'undo' and 'hint' buy one more of those
 const MAX_ADS = 3;
 const adsKey = () => 'bp-ads-' + SZ() + today();
-function adsUsed() { try { return +localStorage.getItem(adsKey()) || 0; } catch (e) { return 0; } }
+function adsUsed() { try { return +LS.getItem(adsKey()) || 0; } catch (e) { return 0; } }
 const adsLeft = () => Math.max(0, MAX_ADS - adsUsed());
 const AD_TEXT = { go: 'Your next go starts in', undo: 'Your undo is ready in', hint: 'Your hint is ready in', hammer: 'Your remove is ready in', coins: 'Your coins arrive in' };
 let adTimer = null, adJob = 'go';
@@ -1750,7 +1855,7 @@ function startAd(job) {
     $('ad').classList.remove('show');
     resumeTimer();
     if (job === 'go') {
-      try { localStorage.setItem(adsKey(), adsUsed() + 1); } catch (e) {}   // only a finished ad uses up an extra go
+      try { LS.setItem(adsKey(), adsUsed() + 1); } catch (e) {}   // only a finished ad uses up an extra go
       reset();
     } else if (job === 'undo') { undosLeft++; undo(); }
     else if (job === 'hint') { hintsLeft++; showHint(); }
@@ -1791,11 +1896,11 @@ function resumeWatch() { if (watch.running && !watch.id) { watch.t0 = performanc
 function stopWatch() { clearInterval(watch.id); watch.id = null; watch.running = false; }
 const fmtWatch = t => Math.floor(t / 60) + ':' + (t % 60).toFixed(1).padStart(4, '0');
 const sprintKey = () => 'bp-sprint-' + SZ();
-function sprintBest() { try { return +localStorage.getItem(sprintKey()) || 0; } catch (e) { return 0; } }
+function sprintBest() { try { return +LS.getItem(sprintKey()) || 0; } catch (e) { return 0; } }
 function sprintOver() {
   stopWatch(); stopTimer();
   const t = watch.elapsed, prev = sprintBest(), isBest = !prev || t < prev;
-  if (isBest) { try { localStorage.setItem(sprintKey(), t); } catch (e) {} }
+  if (isBest) { try { LS.setItem(sprintKey(), t); } catch (e) {} }
   locked = true; sfx.perfect();
   stats.games++; saveStats();
   const earned = 20 + (isBest ? 10 : 0);
@@ -1847,6 +1952,7 @@ function undo() {
   if (chargesOf('undo') <= 0) { startAd('undo'); return; }
   const s = JSON.parse(history);
   ({ grid, pieces, nextPieces, score, combo, rs, gameLines, gameCombo } = s);
+  gameMoves = s.gameMoves | 0;
   bombs = new Set(s.bombs || []);
   if (s.riseLeft !== undefined) riseLeft = s.riseLeft;
   history = null; hint = null; fx = []; locked = false; cardShown = false;
@@ -2009,7 +2115,7 @@ function renderShop() {
   });
 }
 function setLook(k) {
-  look = k; try { localStorage.setItem('bp-look', k); } catch (e) {}
+  look = k; try { LS.setItem('bp-look', k); } catch (e) {}
   applyLook(); render();
 }
 function renderLooks(body) {
@@ -2032,7 +2138,7 @@ function renderLooks(body) {
       b.addEventListener('click', () => {
         if (wallet.coins < L.price) return;
         wallet.coins -= L.price; ownedLooks.push(k); stats.purchases++; saveStats();
-        try { localStorage.setItem('bp-looks', JSON.stringify(ownedLooks.filter(x => x !== 'classic'))); } catch (e) {}
+        try { LS.setItem('bp-looks', JSON.stringify(ownedLooks.filter(x => x !== 'classic'))); } catch (e) {}
         saveWallet(); paintCoins(); checkAchievements(); setLook(k); sfx.clear(2, 1); renderShop(); toast(L.label + ' is yours. Enjoy!');
       });
     }
@@ -2043,7 +2149,7 @@ function renderLooks(body) {
   const h = document.createElement('p'); h.className = 'hint'; h.textContent = 'Themes only change how the game looks. Every theme plays the same.'; body.appendChild(h);
 }
 document.querySelectorAll('#shoptabs button').forEach(b => b.addEventListener('click', () => { shopTab = b.dataset.tab; renderShop(); }));
-$('coinbtn').addEventListener('click', () => openShop());
+$('shopbtn').addEventListener('click', () => openShop());
 $('shopclose').addEventListener('click', closeShop);
 
 // ---- power-ups sheet: Shuffle, Line Clear and Restart ----
@@ -2118,6 +2224,7 @@ function reset(save = true) {
   grid = Array.from({ length: N }, () => Array(N).fill(null));
   score = 0;
   combo = 0;
+  gameMoves = 0; gameToken = null; ensureToken();
   curSeed = gameSeed(); rs = curSeed;   // the daily and weekly are the same for everyone; other games start from a random seed
   nextPieces = null;
   if (cfg().messy) fillMessy();
@@ -2142,19 +2249,28 @@ $('closebtn').addEventListener('click', () => { $('over').classList.remove('show
 $('newgame').addEventListener('click', () => { if (diff === 'daily') showDailyDone(); else $('again').click(); });
 
 // ---- daily leaderboard: /api (Vercel functions + Upstash Redis) ----
+// A daily or weekly game asks the server for a ticket when it starts; the score is only accepted with that ticket and a move count.
+async function ensureToken() {
+  if (diff !== 'daily' && diff !== 'weekly') return;
+  const mine = ++tokenSeq, w = diff === 'weekly';
+  try {
+    const d = await api('/api/start', { id: playerId(), size: w ? weeklyMod().N : N, mode: w ? weeklyMod().mode : mode, board: diff });
+    if (mine === tokenSeq) { gameToken = d.token; saveGame(); }
+  } catch (e) {}
+}
 // No accounts: a random player id lives in this browser and a chosen username is reserved for it on the server.
-const API_BASE = '';   // inside a native app this becomes the full site address
+const API_BASE = window.BP_API_BASE || (IS_NATIVE ? 'https://block-puzzle-two.vercel.app' : '');   // the installed app has no server of its own, so it calls the website's API
 function playerId() {
   let id = null;
-  try { id = localStorage.getItem('bp-pid'); } catch (e) {}
+  try { id = LS.getItem('bp-pid'); } catch (e) {}
   if (!id) {
     id = (crypto.randomUUID ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join(''));
-    try { localStorage.setItem('bp-pid', id); } catch (e) {}
+    try { LS.setItem('bp-pid', id); } catch (e) {}
   }
   return id;
 }
 let nick = '';
-try { nick = localStorage.getItem('bp-nick') || ''; } catch (e) {}
+try { nick = LS.getItem('bp-nick') || ''; } catch (e) {}
 let lbBoard = 'daily';   // 'daily' | 'weekly'
 let lbRows = [], lbYou = null, lbDay = today(), lbState = 'loading';   // loading | ok | down
 
@@ -2179,13 +2295,13 @@ function renderLb() {
   $('lbday').textContent = (wk ? weeklyMod().name + ' \u00b7 ' : '') + (bm === 'crazy' ? 'Crazy ' : '') + bn + '\u00d7' + bn + ' \u00b7 ' + lbDay + (wk ? '' : ' (UTC)');
   $('lbtd').classList.toggle('on', !wk); $('lbtw').classList.toggle('on', wk);
   $('whoami').textContent = nick ? 'Playing as ' + nick : 'You have no name yet.';
-  const none = text => { const li = document.createElement('li'); li.className = 'none'; li.textContent = text; ol.appendChild(li); };
+  const none = (text, icon) => { const li = document.createElement('li'); li.className = 'none'; li.innerHTML = (ICO[icon || 'empty']); const sp = document.createElement('span'); sp.textContent = text; li.appendChild(sp); ol.appendChild(li); };
   if (lbState === 'loading') return none('Loading...');
-  if (lbState === 'down') return none('The leaderboard is not available right now.');
+  if (lbState === 'down') return none('The leaderboard is not available right now. Your scores are safe on this device.', 'off');
   if (!lbRows.length) return none(lbBoard === 'weekly' ? 'No scores yet this week. Be the first.' : 'No scores yet today. Be the first.');
   const row = (r) => {
     const li = document.createElement('li');
-    if (r.me) li.className = 'me';
+    li.className = (r.me ? 'me ' : '') + (r.rank <= 3 ? 'r' + r.rank : '');
     for (const [cls, text] of [['rk', r.rank], ['nm', r.name], ['sc', r.score]]) {
       const s = document.createElement('span');
       s.className = cls; s.textContent = text; li.appendChild(s);
@@ -2228,10 +2344,17 @@ async function submitScore(promptName, board) {
   const w = board === 'weekly', mine = w ? weeklyResult() : dailyResult();
   if (mine === null) return;
   if (!nick) { if (promptName) openName(false); return; }
-  try { await api('/api/score', { id: playerId(), score: mine, size: w ? weeklyMod().N : N, mode: w ? weeklyMod().mode : mode, board }); }
-  catch (e) {
-    if (e.code === 'no_name') { nick = ''; openName(false); }   // the server lost this name; claim it again
-    $('lbstatus').textContent = 'Could not send your score yet.';
+  const pkey = (w ? weeklyKey() : dailyKey()) + '-proof';
+  let proof = null;
+  try { proof = JSON.parse(LS.getItem(pkey)); } catch (e) {}
+  if (!proof || !proof.token) { $('lbstatus').textContent = 'This score was played without a connection, so it cannot be posted.'; return; }
+  if (proof.sent === mine) return;   // already on the board
+  try {
+    await api('/api/score', { id: playerId(), score: mine, size: w ? weeklyMod().N : N, mode: w ? weeklyMod().mode : mode, board, token: proof.token, moves: proof.moves });
+    proof.sent = mine; LS.setItem(pkey, JSON.stringify(proof));
+  } catch (e) {
+    if (e.code === 'no_name') { nick = ''; openName(false); return; }   // the server lost this name; claim it again
+    $('lbstatus').textContent = ['no_proof', 'bad_token', 'too_fast', 'bad_score'].includes(e.code) ? 'This score could not be verified.' : 'Could not send your score yet.';
   }
 }
 
@@ -2250,7 +2373,7 @@ async function saveName() {
   try {
     const d = await api('/api/claim', { id: playerId(), name });
     nick = d.name;
-    try { localStorage.setItem('bp-nick', nick); } catch (e) {}
+    try { LS.setItem('bp-nick', nick); } catch (e) {}
     $('nameo').classList.remove('show');
     await submitScore(false, lbBoard);
     if ($('lbo').classList.contains('show')) loadLb();
@@ -2315,10 +2438,10 @@ $('chalno').addEventListener('click', () => $('chal').classList.remove('show'));
 $('chalbtn').addEventListener('click', () => doShare(challengeText(score), $('chalbtn')));
 // ---- sound and vibration (synthesised, no audio files) ----
 let soundOn = true;
-try { soundOn = localStorage.getItem('bp-sound') !== '0'; } catch (e) {}
+try { soundOn = LS.getItem('bp-sound') !== '0'; } catch (e) {}
 let actx = null;
 let sfxVol = 2.2;   // master level for effects
-try { const v = +localStorage.getItem('bp-sfxvol'); if ([1.4, 2.2, 3.2].includes(v)) sfxVol = v; } catch (e) {}
+try { const v = +LS.getItem('bp-sfxvol'); if ([1.4, 2.2, 3.2].includes(v)) sfxVol = v; } catch (e) {}
 // every effect goes through one gain stage and a compressor, so turning them up never distorts
 function out(a) {
   if (!a._bus) {
@@ -2394,7 +2517,12 @@ const sfx = {
   smash: () => { tone(170, 0.16, 'square', 0.28, 0, 50); tone(1100, 0.07, 'sine', 0.14, 0, 400); noise(0.12, 0.25, 0, 'bandpass', 1800, 500); },
   perfect: () => [523.25, 659.25, 783.99, 1046.5, 1318.51, 1568].forEach((f, i) => tone(f, 0.32, 'sine', 0.16, i * 0.07)),
 };
-const buzz = pattern => { if (soundOn && navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) {} } };
+const buzz = pattern => {
+  if (!soundOn) return;
+  const H = IS_NATIVE && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics;   // iPhone has no web vibration, so the app uses its own haptics
+  if (H) { try { const ms = Array.isArray(pattern) ? pattern.reduce((a, b, i) => a + (i % 2 ? 0 : b), 0) : pattern; H.impact({ style: ms > 60 ? 'HEAVY' : ms > 25 ? 'MEDIUM' : 'LIGHT' }); } catch (e) {} return; }
+  if (navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) {} }
+};
 
 function feedback(lines, gain, perfect, booms) {
   if (booms) { sfx.boom(); buzz([60, 25, 90, 25, 60, 25, 40]); if (perfect) sfx.perfect(); showPop(gain, lines, perfect, booms); }
@@ -2404,7 +2532,7 @@ function feedback(lines, gain, perfect, booms) {
 }
 // floating "+points" over the board, with a glow when a clear is big
 let rm = false;   // reduce motion
-try { const v = localStorage.getItem('bp-rm'); rm = v === null ? !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) : v === '1'; } catch (e) {}
+try { const v = LS.getItem('bp-rm'); rm = v === null ? !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) : v === '1'; } catch (e) {}
 document.body.classList.toggle('rm', rm);
 function burstParticles(n, colors) {   // a short burst of confetti or sparks over the board
   if (rm) return;
@@ -2443,7 +2571,7 @@ function renderSound() {
 }
 function toggleSound() {
   soundOn = !soundOn;
-  try { localStorage.setItem('bp-sound', soundOn ? '1' : '0'); } catch (e) {}
+  try { LS.setItem('bp-sound', soundOn ? '1' : '0'); } catch (e) {}
   renderSound();
   sfx.tick();
 }
@@ -2452,7 +2580,7 @@ renderSound();
 
 function applyTheme(t, persist = true) {
   document.documentElement.dataset.theme = t;
-  if (persist) try { localStorage.setItem('bp-theme', t); } catch (e) {}
+  if (persist) try { LS.setItem('bp-theme', t); } catch (e) {}
   applyLook();
 }
 applyTheme(document.documentElement.dataset.theme || 'dark', false);
@@ -2461,18 +2589,18 @@ applyTheme(document.documentElement.dataset.theme || 'dark', false);
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show'); }
 function checkUnlocks() {
   let seen = ['classic'];
-  try { seen = JSON.parse(localStorage.getItem('bp-skins-seen')) || seen; } catch (e) {}
+  try { seen = JSON.parse(LS.getItem('bp-skins-seen')) || seen; } catch (e) {}
   const fresh = Object.keys(SKINS).filter(k => skinUnlocked(k) && !seen.includes(k));
   if (!fresh.length) return;
-  try { localStorage.setItem('bp-skins-seen', JSON.stringify(seen.concat(fresh))); } catch (e) {}
+  try { LS.setItem('bp-skins-seen', JSON.stringify(seen.concat(fresh))); } catch (e) {}
   toast('Unlocked block style: ' + SKINS[fresh[0]].label + '. Pick it in Settings.');
 }
 
 // ---- missions and badges ----
 function rngFrom(seed) { let a = seed | 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const prog = { day: '', d: {}, dDone: {}, week: '', w: {}, wDone: {} };
-try { Object.assign(prog, JSON.parse(localStorage.getItem('bp-prog')) || {}); } catch (e) {}
-function saveProg() { try { localStorage.setItem('bp-prog', JSON.stringify(prog)); } catch (e) {} }
+try { Object.assign(prog, JSON.parse(LS.getItem('bp-prog')) || {}); } catch (e) {}
+function saveProg() { try { LS.setItem('bp-prog', JSON.stringify(prog)); } catch (e) {} }
 function rollProg() {
   const t = today(), w = isoWeek(t);
   if (prog.day !== t) { prog.day = t; prog.d = {}; prog.dDone = {}; }
@@ -2580,12 +2708,12 @@ const BADGE_ICON = {
   shop: '<path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
 };
 let ach = [];
-try { ach = JSON.parse(localStorage.getItem('bp-ach')) || []; } catch (e) {}
+try { ach = JSON.parse(LS.getItem('bp-ach')) || []; } catch (e) {}
 function checkAchievements() {
   const fresh = BADGES.filter(b => !ach.includes(b.id) && b.test());
   if (!fresh.length) return;
   fresh.forEach(b => { ach.push(b.id); addCoins(b.reward); });
-  try { localStorage.setItem('bp-ach', JSON.stringify(ach)); } catch (e) {}
+  try { LS.setItem('bp-ach', JSON.stringify(ach)); } catch (e) {}
   toast('Badge unlocked: ' + fresh.map(b => b.name + ' (+' + b.reward + ')').join(' · '));
 }
 // call after anything that changes progress
@@ -2672,7 +2800,7 @@ function renderSettings() {
     const b = document.createElement('button'); b.className = 'switch'; b.setAttribute('role', 'switch'); b.setAttribute('aria-pressed', String(on));
     b.addEventListener('click', () => { toggle(); renderSettings(); }); return b;
   };
-  const keep = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+  const keep = (k, v) => { try { LS.setItem(k, v); } catch (e) {} };
   if (look === 'classic') row('Theme', '', seg([['dark', 'Dark'], ['light', 'Light']], document.documentElement.dataset.theme, applyTheme));
   const lookBtn = document.createElement('button'); lookBtn.className = 'ghostbtn'; lookBtn.style.margin = '0'; lookBtn.style.padding = '8px 14px'; lookBtn.textContent = LOOKS[look].label + ' \u00b7 Change';
   lookBtn.addEventListener('click', () => { $('settings').classList.remove('show'); openShop('looks'); });
@@ -2755,7 +2883,7 @@ function tutAfterMove(lines) {
 }
 function tutEnd() {
   tutStep = -1; hint = null; clearTimeout(tutTimer);
-  try { localStorage.setItem('bp-tut', '1'); } catch (e) {}
+  try { LS.setItem('bp-tut', '1'); } catch (e) {}
   $('coach').hidden = true;
   render();
 }
@@ -2765,7 +2893,7 @@ $('coachskip').addEventListener('click', tutEnd);
 function closeHelp() {
   $('help').classList.remove('show');
   let first = false;
-  try { first = !localStorage.getItem('bp-help'); localStorage.setItem('bp-help', '1'); } catch (e) {}
+  try { first = !LS.getItem('bp-help'); LS.setItem('bp-help', '1'); } catch (e) {}
   if (first) tutBegin();   // new players get the guided first game
   if (!nick) openName(true);
 }
@@ -2774,7 +2902,7 @@ $('helpclose').addEventListener('click', closeHelp);
 paintCoins();
 start();
 let seenHelp = false;
-try { seenHelp = !!localStorage.getItem('bp-help'); } catch (e) {}
+try { seenHelp = !!LS.getItem('bp-help'); } catch (e) {}
 if (!seenHelp) $('help').classList.add('show');
 else if (!nick) openName(true);   // first launch: choose a username (can be skipped)
 {
@@ -2783,16 +2911,34 @@ else if (!nick) openName(true);   // first launch: choose a username (can be ski
   if (location.search) { try { window.history.replaceState(null, '', location.pathname); } catch (e) {} }
   if (pc) showChallengeCard(pc);
 }
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('/sw.js').catch(() => {});
+if (!IS_NATIVE && 'serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('/sw.js').catch(() => {});
 // ---- splash: a short title screen, once per visit ----
 (function () {
   const sp = $('splash'); if (!sp) return;
   let seen = false;
   try { seen = sessionStorage.getItem('bp-splash') === '1'; sessionStorage.setItem('bp-splash', '1'); } catch (e) {}
-  if (seen || document.body.classList.contains('rm')) { sp.remove(); return; }
+  if (seen || IS_NATIVE || document.body.classList.contains('rm')) { sp.remove(); return; }
   setTimeout(() => { sp.classList.add('out'); setTimeout(() => sp.remove(), 400); }, 900);
 })();
 applyLook();
+</script>
+<script>
+// Runs the game once its saved data is ready. On the web that is immediately; in the installed app it first loads everything from the phone's storage.
+(function () {
+  var run = function () { var s = document.createElement('script'); s.textContent = document.getElementById('main').textContent; document.body.appendChild(s); };
+  var C = window.Capacitor, P = C && C.Plugins && C.Plugins.Preferences;
+  if (!(C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() && P)) { run(); return; }
+  P.keys().then(function (r) {
+    var m = new Map();
+    return Promise.all(r.keys.map(function (k) { return P.get({ key: k }).then(function (v) { if (v.value != null) m.set(k, v.value); }); })).then(function () {
+      if (!m.size) { try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); m.set(k, localStorage.getItem(k)); P.set({ key: k, value: m.get(k) }); } } catch (e) {} }   // first launch after an update
+      window.__bpStore = m;
+      window.__bpSave = function (k, v) { P.set({ key: k, value: v }).catch(function () {}); };
+      window.__bpRemove = function (k) { P.remove({ key: k }).catch(function () {}); };
+      run();
+    });
+  }).catch(function () { run(); });
+})();
 </script>
 </body>
 </html>

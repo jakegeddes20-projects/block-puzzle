@@ -4,7 +4,7 @@ const { redis, ID_RE, MAX_SCORE, MAX_SCORE_BY_SIZE, limited, SIZES, MODES, BOARD
 module.exports = async (req, res) => {
   if (!guard(req, res)) return;
   try {
-    const { id, score } = req.body || {};
+    const { id, score, token, moves } = req.body || {};
     const size = sizeOf(req.body);
     if (!SIZES.includes(size)) return send(res, 400, { error: 'bad_size' });
     const mode = modeOf(req.body);
@@ -15,6 +15,15 @@ module.exports = async (req, res) => {
     if (!Number.isInteger(score) || score < 0 || score > MAX_SCORE) return send(res, 400, { error: 'bad_score' });
     if (score > MAX_SCORE_BY_SIZE[size]) return send(res, 400, { error: 'bad_score' });
     if (await limited('rl:score:' + id, 60, 3600)) return send(res, 429, { error: 'slow_down' });
+    // proof of play: a ticket issued when this game started, enough time passed, and a score that fits the number of moves
+    if (typeof token !== 'string' || token.length < 10 || token.length > 64 || !Number.isInteger(moves) || moves < 1 || moves > 5000) return send(res, 400, { error: 'no_proof' });
+    const rec = await redis.hgetall('tok:' + token);
+    if (!rec || rec.id !== id || Number(rec.size) !== size || rec.mode !== mode || rec.board !== board) return send(res, 400, { error: 'bad_token' });
+    const elapsed = (Date.now() - Number(rec.t0)) / 1000;
+    if (elapsed < moves * 0.6) return send(res, 400, { error: 'too_fast' });
+    if (score > moves * 25 * size) return send(res, 400, { error: 'bad_score' });
+    if (Number(rec.max) > 0 && score > Number(rec.max)) return send(res, 400, { error: 'bad_token' });   // one game, one score
+    await redis.hset('tok:' + token, { max: score });
     if (!(await redis.hget('players', id))) return send(res, 403, { error: 'no_name' });
 
     const key = boardKey(board, size, mode);

@@ -50,10 +50,23 @@ function send(res, code, body) {
   res.status(code).json(body);
 }
 // shared guard: POST only, storage configured
+// the installed app runs from capacitor://localhost (iPhone) or https://localhost (Android), so those origins may call the API
+const APP_ORIGINS = ['capacitor://localhost', 'ionic://localhost', 'http://localhost', 'https://localhost'];
+function cors(req, res) {
+  const o = req.headers && req.headers.origin;
+  if (!o || !APP_ORIGINS.includes(o)) return;
+  res.setHeader('Access-Control-Allow-Origin', o);
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Max-Age', '86400');
+}
 function guard(req, res) {
+  cors(req, res);
+  if (req.method === 'OPTIONS') { res.status(204).end(); return false; }
   if (req.method !== 'POST') { send(res, 405, { error: 'method' }); return false; }
   if (!redis) { send(res, 503, { error: 'unavailable' }); return false; }
   return true;
 }
 
-module.exports = { redis, today, ID_RE, NAME_RE, MAX_SCORE, MAX_SCORE_BY_SIZE, ipKey, limited, SIZES, MODES, BOARDS, boardOf, boardKey, weekId, sizeOf, modeOf, dayKey, badName, send, guard };
+module.exports = { redis, today, ID_RE, NAME_RE, MAX_SCORE, MAX_SCORE_BY_SIZE, ipKey, limited, SIZES, MODES, BOARDS, boardOf, boardKey, weekId, sizeOf, modeOf, dayKey, badName, send, guard, cors };
