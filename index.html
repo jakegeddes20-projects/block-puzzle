@@ -240,7 +240,8 @@
   .tools2 { display: flex; gap: 8px; flex: 1; }
   .tool { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 0; border-radius: 14px; background: var(--panel); color: var(--text);
     border: 1px solid var(--line); font-size: 14px; font-weight: 600; transition: background .15s, opacity .15s; }
-  .tool svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .tool svg.toy { width: 24px; height: 24px; }
+  .tool svg:not(.toy) { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .tool b { min-width: 24px; padding: 2px 7px; border-radius: 999px; background: var(--raised); color: var(--accent-text); font-size: 12px; font-weight: 800; text-align: center; }
   .tool:hover:not(:disabled) { background: var(--raised); }
   .tool:disabled { opacity: .4; cursor: default; }
@@ -324,6 +325,8 @@
   .balance b { font-size: 28px; font-weight: 800; }
   .shoprow { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
   .shoprow:first-child { border-top: 0; }
+  .shoprow .nm.withico { display: flex; align-items: center; gap: 11px; }
+  .shoprow .nm .toy { width: 38px; height: 38px; flex: none; }
   .shoprow .nm b { font-size: 15px; font-weight: 700; }
   .shoprow .nm small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.35; }
   .shoprow .own { color: var(--accent-text); font-weight: 800; font-size: 13px; text-align: right; }
@@ -1764,6 +1767,55 @@ function gameOver(reason) {
   render();
 }
 
+// toy-style power-up icons: chunky shapes, bright fills, darker outlines, a white shine. Colours are fixed so they read on every look.
+const TOY = (() => {
+  const s = body => '<svg class="toy" viewBox="0 0 48 48" aria-hidden="true" stroke-linejoin="round" stroke-linecap="round">' + body + '</svg>';
+  return {
+    remove: s(
+      '<g transform="translate(24 24) rotate(38) scale(.8) translate(-24 -24)">' +
+        '<rect x="20" y="16" width="8" height="28" rx="4" fill="#ffc93c" stroke="#a86a00" stroke-width="2.5"/>' +
+        '<rect x="22.2" y="22" width="2.2" height="16" rx="1.1" fill="#fff" opacity=".55"/>' +
+        '<rect x="6" y="3" width="36" height="18" rx="7" fill="#ff5468" stroke="#a81c30" stroke-width="2.5"/>' +
+        '<rect x="6" y="3" width="9" height="18" rx="4.5" fill="#ffd23f" stroke="#a86a00" stroke-width="2.5"/>' +
+        '<rect x="33" y="3" width="9" height="18" rx="4.5" fill="#ffd23f" stroke="#a86a00" stroke-width="2.5"/>' +
+        '<rect x="18" y="6.5" width="14" height="3.5" rx="1.75" fill="#fff" opacity=".6"/>' +
+      '</g>'),
+    undo: s(
+      '<path d="M14 18h14a10 10 0 0 1 0 20H14" fill="none" stroke="#1d5eb3" stroke-width="10"/>' +
+      '<path d="M14 18h14a10 10 0 0 1 0 20H14" fill="none" stroke="#4aa8ff" stroke-width="6"/>' +
+      '<path d="M3 18 17 7v22z" fill="#4aa8ff" stroke="#1d5eb3" stroke-width="2.5"/>' +
+      '<path d="M20 16h8" fill="none" stroke="#fff" stroke-width="2" opacity=".55"/>'),
+    hint: s(
+      '<rect x="17" y="35" width="14" height="9" rx="4" fill="#aab4c8" stroke="#56627a" stroke-width="2.5"/>' +
+      '<path d="M24 3a14 14 0 0 0-8.5 25c1.4 1.1 2 2.4 2 4.3h13c0-1.9.6-3.2 2-4.3A14 14 0 0 0 24 3z" fill="#ffd93f" stroke="#a87800" stroke-width="2.5"/>' +
+      '<path d="M15.5 14a9.5 9.5 0 0 1 7-7" fill="none" stroke="#fff" stroke-width="3" opacity=".7"/>' +
+      '<path d="M19 21l5 6 5-6" fill="none" stroke="#e08a00" stroke-width="2"/>'),
+    shuffle: s(
+      '<g fill="none" stroke="#5a2bb0" stroke-width="10"><path d="M6 14h9c9 0 9 20 18 20h4"/><path d="M6 34h9c9 0 9-20 18-20h4"/></g>' +
+      '<g fill="none" stroke="#b07dff" stroke-width="6"><path d="M6 14h9c9 0 9 20 18 20h4"/><path d="M6 34h9c9 0 9-20 18-20h4"/></g>' +
+      '<path d="M44 14 34 8v12zM44 34l-10-6v12z" fill="#b07dff" stroke="#5a2bb0" stroke-width="2.5"/>'),
+    line: s(
+      '<rect x="2" y="17" width="44" height="14" rx="5" fill="#243055" stroke="#10183a" stroke-width="2.5"/>' +
+      '<rect x="5" y="20" width="8" height="8" rx="2.5" fill="#ff5d8f"/>' +
+      '<rect x="15" y="20" width="8" height="8" rx="2.5" fill="#ffd23f"/>' +
+      '<rect x="25" y="20" width="8" height="8" rx="2.5" fill="#35d9c8"/>' +
+      '<rect x="35" y="20" width="8" height="8" rx="2.5" fill="#b07dff"/>' +
+      '<path d="M24 1l3 8 8 3-8 3-3 8-3-8-8-3 8-3z" fill="#fff6a8" stroke="#d99a00" stroke-width="2"/>' +
+      '<path d="M38 33l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#fff6a8" stroke="#d99a00" stroke-width="1.8"/>'),
+    more: s(
+      '<path d="M28 2 8 27h12l-4 19 24-28H27z" fill="#ffb02e" stroke="#a85a00" stroke-width="2.5"/>' +
+      '<path d="M26 8 14 24" fill="none" stroke="#fff" stroke-width="3" opacity=".6"/>'),
+    restart: s(
+      '<path d="M38 26A14 14 0 1 1 28.8 12.8" fill="none" stroke="#1c7a4c" stroke-width="10"/>' +
+      '<path d="M38 26A14 14 0 1 1 28.8 12.8" fill="none" stroke="#3fd68b" stroke-width="6"/>' +
+      '<path d="M23.3 19.3 28.7 4.3 37.3 15.9z" fill="#3fd68b" stroke="#1c7a4c" stroke-width="2.5"/>')
+  };
+})();
+[['undobtn', 'undo'], ['hintbtn', 'hint'], ['hammerbtn', 'remove'], ['toolsbtn', 'more']].forEach(([id, k]) => {
+  const old = $(id).querySelector('svg'), t = document.createElement('div');
+  t.innerHTML = TOY[k]; old.replaceWith(t.firstChild);
+});
+
 let extraWeekly = '';
 let againMode = 'reset';   // what the main button on the card does
 const ICO = {
@@ -2092,9 +2144,10 @@ function renderShop() {
   body.innerHTML = '';
   document.querySelectorAll('#shoptabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === shopTab));
   if (shopTab === 'looks') { renderLooks(body); return; }
-  const row = (nm, sub, own) => {
+  const row = (nm, sub, own, ico) => {
     const d = document.createElement('div'); d.className = 'shoprow';
-    const n = document.createElement('div'); n.className = 'nm'; n.innerHTML = '<b></b><small></small>'; n.firstChild.textContent = nm; n.lastChild.textContent = sub;
+    const n = document.createElement('div'); n.className = 'nm' + (ico ? ' withico' : ''); n.innerHTML = (ico ? TOY[ico] + '<div><b></b><small></small></div>' : '<b></b><small></small>');
+    n.querySelector('b').textContent = nm; n.querySelector('small').textContent = sub;
     const o = document.createElement('div'); o.className = 'own'; o.textContent = own || '';
     d.appendChild(n); d.appendChild(o); body.appendChild(d); return d;
   };
@@ -2110,7 +2163,7 @@ function renderShop() {
   ab.appendChild(btn('Watch ad for 40 coins', () => startAd('coins'), '', adsToday >= AD_COIN_LIMIT));
   adr.appendChild(ab);
   TOOLS.forEach(t => {
-    const it = ITEMS[t], d = row(it.name, it.desc, 'You have ' + wallet.inv[t]);
+    const it = ITEMS[t], d = row(it.name, it.desc, 'You have ' + wallet.inv[t], t);
     d.dataset.item = t;
     const bs = document.createElement('div'); bs.className = 'buys';
     bs.appendChild(btn('Buy 1 <i class="coin"></i> ' + it.price, () => buy(t, 1, it.price), '', wallet.coins < it.price));
@@ -2163,16 +2216,16 @@ let restartArmed = false;
 function renderSheet() {
   const body = $('sheetbody');
   body.innerHTML = '';
-  const row = (t, sub, onUse, label, off) => {
+  const row = (t, sub, onUse, label, off, ico) => {
     const d = document.createElement('div'); d.className = 'shoprow';
-    const n = document.createElement('div'); n.className = 'nm'; n.innerHTML = '<b></b><small></small>'; n.firstChild.textContent = t; n.lastChild.textContent = sub;
+    const n = document.createElement('div'); n.className = 'nm withico'; n.innerHTML = TOY[ico] + '<div><b></b><small></small></div>'; n.querySelector('b').textContent = t; n.querySelector('small').textContent = sub;
     const b = document.createElement('button'); b.className = 'buybtn go'; b.style.flex = 'none'; b.style.padding = '9px 16px'; b.textContent = label; b.disabled = !!off; b.addEventListener('click', onUse);
     d.appendChild(n); d.appendChild(b); body.appendChild(d);
   };
   const timed = !!cfg().time, puz = diff === 'puzzle';
-  row('Shuffle', 'Swap your three pieces for new ones. You have ' + wallet.inv.shuffle, useShuffle, 'Use', puz || locked);
-  row('Line Clear', 'Clear a whole row or column. You have ' + wallet.inv.line, useLine, 'Use', locked);
-  row('Restart', restartArmed ? 'Tap again to throw this game away' : 'Start this game over', () => { if (!restartArmed) { restartArmed = true; renderSheet(); setTimeout(() => { restartArmed = false; }, 4000); return; } restartArmed = false; closeSheet(); reset(); }, restartArmed ? 'Sure?' : 'Restart', false);
+  row('Shuffle', 'Swap your three pieces for new ones. You have ' + wallet.inv.shuffle, useShuffle, 'Use', puz || locked, 'shuffle');
+  row('Line Clear', 'Clear a whole row or column. You have ' + wallet.inv.line, useLine, 'Use', locked, 'line');
+  row('Restart', restartArmed ? 'Tap again to throw this game away' : 'Start this game over', () => { if (!restartArmed) { restartArmed = true; renderSheet(); setTimeout(() => { restartArmed = false; }, 4000); return; } restartArmed = false; closeSheet(); reset(); }, restartArmed ? 'Sure?' : 'Restart', false, 'restart');
   const shop = document.createElement('button'); shop.className = 'ghostbtn'; shop.textContent = 'Get more in the Shop'; shop.style.display = 'block'; shop.style.margin = '12px auto 0';
   shop.addEventListener('click', () => { closeSheet(); openShop(); });
   body.appendChild(shop);
