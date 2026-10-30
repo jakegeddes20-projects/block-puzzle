@@ -80,7 +80,10 @@
     background: var(--panel); color: var(--text); border: 1px solid var(--line); box-shadow: var(--shadow); text-align: left; transition: background .15s; }
   .levelbtn:hover { background: var(--raised); }
   .levelbtn.sizebtn { flex: none; width: 70px; }
+  :root:not([lang="en"]) .levelpick { width: 100%; }   /* other languages have longer words */
+  :root:not([lang="en"]) .levelbtn .lv b { font-size: 15px; }
   .levelbtn.modebtn { flex: none; width: 82px; }
+  :root:not([lang="en"]) .levelbtn.modebtn { width: auto; min-width: 82px; }
   .levelbtn.sizebtn .lv b, .levelbtn.modebtn .lv b { font-size: 15px; }
   .levelmenu.sizemenu, .levelmenu.modemenu { left: auto; width: 240px; }
   @media (max-width: 400px) { .levelbtn:not(.sizebtn):not(.modebtn) .lv small { display: none; } }
@@ -272,6 +275,7 @@
 
   .card.left { text-align: left; }
   .card.left h2 { text-align: center; }
+  .langsel { font: inherit; font-weight: 600; font-size: 14px; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; max-width: 150px; }
   .srow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
   .srow:first-child { border-top: 0; }
   .srow > span b { display: block; font-size: 15px; font-weight: 700; }
@@ -635,7 +639,7 @@
 <div id="help"><div class="card">
   <h2>How to play</h2>
   <ol class="steps">
-    <li><b>Pick.</b> Choose a level, a board size (6\u00d76 to 12\u00d712) and Classic or Crazy mode at the top. Crazy mixes in wild shapes sized to the board.</li>
+    <li><b>Pick.</b> Choose a level, a board size (6×6 to 12×12) and Classic or Crazy mode at the top. Crazy mixes in wild shapes sized to the board.</li>
     <li><b>Place.</b> Drag a piece onto the board, or tap a piece and then tap where it goes.</li>
     <li><b>Clear.</b> Fill a whole row or column to clear it.</li>
     <li><b>Combo.</b> Clear lines on back-to-back turns for bonus points.</li>
@@ -643,13 +647,18 @@
     <li><b>Keys.</b> On a computer: U undo, H hint, R remove, P power-ups, Esc cancels.</li>
     <li><b>Bombs.</b> In Crazy, some pieces hide a bomb. It shows once the piece is placed, and when its row or column clears it blows up the blocks around it. Bigger boards get bigger blasts.</li>
     <li><b>Remove.</b> In Crazy you can also remove one block: tap Remove, then tap any block on the board. One free per game, then an ad earns another.</li>
-    <li><b>Power-ups.</b> Under the board: Undo takes back your last move, Hint glows a good spot. Tap <b>More</b> for Shuffle (swap your three pieces for new ones) and Line Clear (tap it, then tap any row or column to clear it). Using one spends one from your stock. Earn more by watching an ad, or buy them in the shop (the basket at the top).</li>
+    <li><b>Power-ups.</b> Under the board: Undo takes back your last move, Hint glows a good spot. Tap More for Shuffle (swap your three pieces for new ones) and Line Clear (tap it, then tap any row or column to clear it). Using one spends one from your stock. Earn more by watching an ad, or buy them in the shop (the basket at the top).</li>
     <li><b>Help.</b> Undo takes back your last move and Hint shows a good spot. Each has one free use per game, then an ad earns another. The Daily has none of these.</li>
   </ol>
   <p class="small">The game ends when none of your pieces fit. Easy shows your next 3 pieces, Medium shows 1, Hard shows none. Timed gives you 2 minutes, Puzzle sets a goal, and the Weekly Challenge changes its rules every week. In Rising, blocks fall after a clear and can chain into combos while new rows push up from below, Sprint is a race to 20 lines, Zen never ends, and Cleanup starts with a messy board.</p>
   <button id="helpclose">Got it</button>
 </div></div>
 
+<script src="lang-es.js"></script>
+<script src="lang-fr.js"></script>
+<script src="lang-de.js"></script>
+<script src="lang-pt.js"></script>
+<script src="lang-it.js"></script>
 <script type="text/plain" id="main">
 // ---- storage and platform: the web uses localStorage; the installed app keeps everything in memory and mirrors it to the phone's own storage ----
 const IS_NATIVE = !!(window.Capacitor && typeof Capacitor.isNativePlatform === 'function' && Capacitor.isNativePlatform());
@@ -659,6 +668,116 @@ const LS = {
   setItem(k, v) { v = String(v); if (window.__bpStore) { window.__bpStore.set(k, v); window.__bpSave(k, v); } else localStorage.setItem(k, v); },
   removeItem(k) { if (window.__bpStore) { window.__bpStore.delete(k); window.__bpRemove(k); } else localStorage.removeItem(k); },
 };
+
+// ---- languages: the English text is the key. Tables live in lang-xx.js (window.BP_LANG.xx = { 'English': 'Translation', 'Earn {0} coins': '...{0}...' }).
+// Text the game writes into the page is translated as it appears, so screens need no changes. Anything missing stays English.
+const LANGS = [['en', 'English'], ['es', 'Español'], ['fr', 'Français'], ['de', 'Deutsch'], ['pt', 'Português'], ['it', 'Italiano']];
+const LOCALES = { en: 'en-GB', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', pt: 'pt-PT', it: 'it-IT' };
+let lang = 'en';
+try {
+  const saved = LS.getItem('bp-lang'), guess = String(navigator.language || 'en').slice(0, 2).toLowerCase();
+  lang = LANGS.some(l => l[0] === saved) ? saved : LANGS.some(l => l[0] === guess) ? guess : 'en';
+} catch (e) {}
+if (lang !== 'en' && !(window.BP_LANG && BP_LANG[lang])) lang = 'en';
+let L_EXACT = new Map(), L_TPL = [], L_MEMO = new Map();
+const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function compileLang() {
+  L_EXACT = new Map(); L_TPL = []; L_MEMO = new Map();
+  const d = (window.BP_LANG || {})[lang];
+  if (lang === 'en' || !d) return;
+  Object.keys(d).forEach(k => {
+    if (!/\{\d\}/.test(k)) { L_EXACT.set(k, d[k]); return; }
+    const lits = k.split(/\{\d\}/);
+    L_TPL.push({ re: new RegExp('^' + lits.map(escRe).join('([^·.!?]+?)') + '$'), out: d[k], weight: lits.join('').length });
+  });
+  L_TPL.sort((a, b) => b.weight - a.weight);   // the template with the most fixed text is the most specific
+}
+const NUMLIKE = /^[\d\s.,:+\-×/%·()?∞]*$/;
+const MISSED = new Set();   // untranslated text seen this session (used when testing)
+function tr(s) {
+  if (lang === 'en' || typeof s !== 'string') return s;
+  let r = L_MEMO.get(s);
+  if (r !== undefined) return r;
+  const t = s.trim();
+  r = s;
+  if (t && !NUMLIKE.test(t)) {
+    let out = L_EXACT.get(t), m;
+    if (out === undefined && (m = /^([^·]+?)  \((\d+)\/(\d+)\)$/.exec(t))) out = tr(m[1]) + '  (' + m[2] + '/' + m[3] + ')';   // mission progress
+    else if (out === undefined && (m = /^([^·]+?) \(\+(\d+)\)$/.exec(t))) out = tr(m[1]) + ' (+' + m[2] + ')';   // coin rewards
+    if (out === undefined) {
+      for (const x of L_TPL) {
+        m = x.re.exec(t);
+        if (m) { out = x.out.replace(/\{(\d)\}/g, (_, n) => tr(m[+n + 1] === undefined ? '' : m[+n + 1])); break; }
+      }
+    }
+    if (out === undefined) out = trParts(t.split(' · '), ' · ');
+    if (out === undefined) out = trParts((t.match(/.+?(?:[.!?](?= |$)|$)/g) || []).map(x => x.trim()).filter(Boolean), ' ');
+    if (out !== undefined) { const i = s.indexOf(t); r = s.slice(0, i) + out + s.slice(i + t.length); }
+    else if (/[A-Za-z]{3}/.test(t)) MISSED.add(t);
+  }
+  if (L_MEMO.size > 4000) L_MEMO.clear();
+  L_MEMO.set(s, r);
+  return r;
+}
+// "a · b" and "One sentence. Another." are translated piece by piece, so combinations need no entries of their own
+function trParts(parts, glue) {
+  if (parts.length < 2) return undefined;
+  let changed = false;
+  const out = parts.map(p => { const q = tr(p); if (q !== p) changed = true; return q; });
+  return changed ? out.join(glue) : undefined;
+}
+const trLines = s => (lang === 'en' ? s : String(s).split('\n').map(tr).join('\n'));
+// translate the page: remember the English the game wrote, so the language can change at any time
+const L_TEXT = new WeakMap(), L_ATTR = new WeakMap(), L_ATTRS = ['aria-label', 'placeholder', 'title'];
+function trText(n) {
+  const rec = L_TEXT.get(n);
+  const eng = rec && rec.out === n.data ? rec.eng : n.data;   // changed behind our back: the game wrote new English
+  const out = tr(eng);
+  L_TEXT.set(n, { eng, out });
+  if (out !== n.data) n.data = out;
+}
+function trAttrs(el) {
+  L_ATTRS.forEach(a => {
+    const cur = el.getAttribute(a);
+    if (cur === null) return;
+    const recs = L_ATTR.get(el) || {}, rec = recs[a];
+    const eng = rec && rec.out === cur ? rec.eng : cur;
+    const out = tr(eng);
+    recs[a] = { eng, out }; L_ATTR.set(el, recs);
+    if (out !== cur) el.setAttribute(a, out);
+  });
+}
+function trTree(root) {
+  if (root.nodeType === 3) { if (!/^(SCRIPT|STYLE)$/.test(root.parentNode && root.parentNode.nodeName)) trText(root); return; }
+  if (root.nodeType !== 1) return;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, { acceptNode: n => (n.nodeType === 1 && /^(SCRIPT|STYLE)$/.test(n.nodeName) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
+  if (root.hasAttribute && L_ATTRS.some(a => root.hasAttribute(a))) trAttrs(root);
+  for (let n = w.nextNode(); n; n = w.nextNode()) { if (n.nodeType === 3) trText(n); else if (L_ATTRS.some(a => n.hasAttribute(a))) trAttrs(n); }
+}
+function restoreTree(root) {   // back to English
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  for (let n = w.nextNode(); n; n = w.nextNode()) {
+    if (n.nodeType === 3) { const rec = L_TEXT.get(n); if (rec && rec.out === n.data && rec.eng !== n.data) n.data = rec.eng; }
+    else { const recs = L_ATTR.get(n); if (recs) L_ATTRS.forEach(a => { const rec = recs[a]; if (rec && n.getAttribute(a) === rec.out && rec.eng !== rec.out) n.setAttribute(a, rec.eng); }); }
+  }
+}
+const L_OBS = new MutationObserver(muts => {
+  muts.forEach(m => {
+    if (m.type === 'characterData') trTree(m.target);
+    else if (m.type === 'attributes') trAttrs(m.target);
+    else m.addedNodes.forEach(trTree);
+  });
+});
+function applyLang() {
+  L_OBS.disconnect();
+  document.documentElement.lang = lang;
+  compileLang();
+  if (lang === 'en') { restoreTree(document.body); return; }
+  trTree(document.body);
+  L_OBS.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: L_ATTRS });
+}
+applyLang();
+
 try { const t = LS.getItem('bp-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
 const SIZES = [6, 8, 10, 12];
 let N = 8;   // board is N x N
@@ -1554,7 +1673,7 @@ function renderNext() {
 
 const SUBS = {
   easy: () => '3 ahead', medium: () => '1 ahead', hard: () => 'blind', timed: () => '2:00',
-  daily: () => new Date(today() + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) + (streakNow() >= 2 ? ' \u00b7 ' + streakNow() + 'd streak' : ''),
+  daily: () => new Date(today() + 'T00:00:00Z').toLocaleDateString(LOCALES[lang], { day: 'numeric', month: 'short', timeZone: 'UTC' }) + (streakNow() >= 2 ? ' \u00b7 ' + streakNow() + 'd streak' : ''),
   puzzle: () => 'No. ' + (puzzleIdx + 1),
   weekly: () => weeklyMod().name,
   challenge: () => (chal ? 'beat ' + chal.target : ''),
@@ -1693,7 +1812,7 @@ function buildShare(value, board) {
     : 'Block Puzzle 2 \u00b7 ' + DIFF[diff].label + (mode === 'crazy' ? ' Crazy' : '') + ' ' + N + '\u00d7' + N;
   const art = board ? '\n' + board.map(r => r.map(c => (c ? EMOJI[c] || '\u2b1b' : '\u2b1c')).join('')).join('\n') : '';
   const streak = streakNow() >= 2 && diff === 'daily' ? '\n' + streakNow() + ' day streak' : '';
-  return head + '\nScore ' + value + streak + art + '\n' + SITE;
+  return trLines(head + '\nScore ' + value + streak) + art + '\n' + SITE;
 }
 
 // ---- streak: consecutive days with a finished daily ----
@@ -1961,7 +2080,7 @@ function sprintOver() {
   stats.games++; saveStats();
   const earned = 20 + (isBest ? 10 : 0);
   addCoins(earned); trackGameEnd(false);
-  shareText = 'Sprint: ' + cfg().sprint + ' lines in ' + fmtWatch(t) + ' on Block Puzzle 2 (' + N + '×' + N + (mode === 'crazy' ? ' Crazy' : '') + '). Can you beat it?\n' + SITE;
+  shareText = tr('Sprint: ' + cfg().sprint + ' lines in ' + fmtWatch(t) + ' on Block Puzzle 2 (' + N + '×' + N + (mode === 'crazy' ? ' Crazy' : '') + '). Can you beat it?') + '\n' + SITE;
   setTimeout(() => { if (locked && cfg().sprint) showCard('Sprint complete', fmtWatch(t), isBest ? 'New best time!' : 'Best ' + fmtWatch(prev), '', 'normal', gameLines + ' lines · +' + earned + ' coins'); }, 500);
   render();
 }
@@ -2468,7 +2587,7 @@ function challengeText(value) {
   const base = diff === 'challenge' && chal ? chal.base : diff;
   const c = { s: curSeed, z: N, m: mode === 'crazy' ? 'c' : 'k', b: base, t: value, n: nick || '' };
   const label = DIFF[base].label + (mode === 'crazy' ? ' Crazy' : '') + ' ' + N + '×' + N;
-  return 'I scored ' + value + ' on Block Puzzle 2 (' + label + '). Same pieces for you. Can you beat it?\n' + SITE + '/?c=' + b64u(JSON.stringify(c));
+  return tr('I scored ' + value + ' on Block Puzzle 2 (' + label + '). Same pieces for you. Can you beat it?') + '\n' + SITE + '/?c=' + b64u(JSON.stringify(c));
 }
 function parseChal() {
   try {
@@ -2836,6 +2955,12 @@ $('statsbtn').addEventListener('click', () => { renderStats(); $('stats').classL
 $('statsclose').addEventListener('click', () => $('stats').classList.remove('show'));
 
 // ---- settings ----
+function setLang(k) {
+  if (!LANGS.some(l => l[0] === k)) return;
+  lang = k; keepLang(k); applyLang();
+  render(); renderSound(); renderSettings();
+}
+function keepLang(k) { try { LS.setItem('bp-lang', k); } catch (e) {} }
 function renderSettings() {
   const body = $('settingsbody');
   body.innerHTML = '';
@@ -2858,6 +2983,10 @@ function renderSettings() {
     b.addEventListener('click', () => { toggle(); renderSettings(); }); return b;
   };
   const keep = (k, v) => { try { LS.setItem(k, v); } catch (e) {} };
+  const ls = document.createElement('select'); ls.className = 'langsel'; ls.setAttribute('aria-label', 'Language');
+  LANGS.forEach(([k, n]) => { const o = document.createElement('option'); o.value = k; o.textContent = n; if (k === lang) o.selected = true; ls.appendChild(o); });
+  ls.addEventListener('change', () => setLang(ls.value));
+  row('Language', '', ls);
   if (look === 'classic') row('Theme', '', seg([['dark', 'Dark'], ['light', 'Light']], document.documentElement.dataset.theme, applyTheme));
   const lookBtn = document.createElement('button'); lookBtn.className = 'ghostbtn'; lookBtn.style.margin = '0'; lookBtn.style.padding = '8px 14px'; lookBtn.textContent = LOOKS[look].label + ' \u00b7 Change';
   lookBtn.addEventListener('click', () => { $('settings').classList.remove('show'); openShop('looks'); });
